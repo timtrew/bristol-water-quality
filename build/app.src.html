@@ -1,0 +1,975 @@
+<title>Bristol Water Quality Explorer</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/*LEAFLET_CSS*/
+</style>
+<style>
+/* Layout: filter rail on the left, map on top of the main column, tabbed analysis below. Harbour-water palette. */
+:root{
+  --bg:#eef3f3; --surface:#fbfdfd; --surface-2:#e3ebec; --ink:#0f1d22; --ink-2:#44565c; --muted:#6f8085;
+  --line:#d3dfe0; --accent:#0d6b75; --accent-ink:#ffffff; --accent-soft:#d5ebec;
+  --water:#6fa9c6; --water-fill:#b9d9e8;
+  --rain:#2a78d6; --spill:#b5621f; --spill-soft:#f1dcc8;
+  --good:#0ca30c; --warn:#e3a008; --crit:#d03b3b; --nodata:#b7c3c5;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  --tile-filter:none;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1518; --surface:#122024; --surface-2:#1a2c31; --ink:#e8f1f2; --ink-2:#b4c6c9; --muted:#8a9ea2;
+  --line:#26393e; --accent:#4fb3bd; --accent-ink:#06181b; --accent-soft:#173a3f;
+  --water:#3d7894; --water-fill:#1d4152; --rain:#3987e5; --spill:#e08a45; --spill-soft:#4a2f1a;
+  --nodata:#4b5b5f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1518; --surface:#122024; --surface-2:#1a2c31; --ink:#e8f1f2; --ink-2:#b4c6c9; --muted:#8a9ea2;
+  --line:#26393e; --accent:#4fb3bd; --accent-ink:#06181b; --accent-soft:#173a3f;
+  --water:#3d7894; --water-fill:#1d4152; --rain:#3987e5; --spill:#e08a45; --spill-soft:#4a2f1a;
+  --nodata:#4b5b5f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6);
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.45;margin:0;padding-inline:16px;padding-block:0 32px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:.01em}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-block:18px 14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+header.top h1{font-size:1.9rem;font-weight:700;line-height:1.05}
+header.top h1 span{color:var(--accent)}
+header.top p{margin:4px 0 0;color:var(--ink-2);max-width:62ch}
+.kpis{display:flex;flex-wrap:wrap;gap:6px 22px}
+.kpi{display:flex;flex-direction:column}
+.kpi b{font-family:var(--f-display);font-size:1.35rem;font-weight:600;line-height:1}
+.kpi small{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr)}}
+
+aside.rail{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:900px){aside.rail{position:static;max-height:none}}
+.field{display:flex;flex-direction:column;gap:6px}
+.lab{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+select,input[type=date],input[type=search]{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1 1 0;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px;font-size:.82rem;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:600}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:default}
+.hint{font-size:.8rem;color:var(--muted);margin:0}
+
+.sitelist{border:1px solid var(--line);border-radius:6px;max-height:360px;overflow:auto;background:var(--bg)}
+.grp{border-bottom:1px solid var(--line)}
+.grp:last-child{border-bottom:0}
+.grp-h{display:flex;align-items:center;gap:8px;padding:6px 8px;font-weight:600;font-size:.85rem;background:var(--surface-2);position:sticky;top:0;cursor:pointer}
+.grp-h .n{margin-left:auto;color:var(--muted);font-weight:500}
+.site{display:flex;align-items:center;gap:8px;padding:4px 8px 4px 22px;font-size:.86rem;cursor:pointer}
+.site:hover{background:var(--accent-soft)}
+.site .id{color:var(--muted);font-size:.75rem}
+.site .n{margin-left:auto;color:var(--muted);font-size:.75rem}
+.site .sw{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid var(--line)}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+
+main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.card-h{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between;padding:12px 14px 0}
+.card-h h2{font-size:1.2rem;font-weight:600}
+.card-h p{margin:0;color:var(--ink-2);font-size:.86rem}
+.card-b{padding:10px 14px 14px}
+
+#map{height:420px;border-radius:0 0 var(--r) var(--r);background:var(--surface-2)}
+@media (max-width:600px){#map{height:340px}}
+.leaflet-tile-pane{filter:var(--tile-filter)}
+.leaflet-container{font-family:var(--f-body);background:var(--surface-2)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--surface);color:var(--ink)}
+.leaflet-popup-content{margin:10px 12px;font-size:.85rem;line-height:1.4}
+.leaflet-tooltip{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--surface) 80%,transparent)!important;color:var(--muted)!important}
+.leaflet-control-attribution a{color:var(--accent)!important}
+.ww-line{stroke:var(--water);fill:none}
+.ww-poly{stroke:var(--water);fill:var(--water-fill);fill-opacity:.8}
+.ov{stroke:var(--surface);stroke-width:.8;fill:var(--spill);fill-opacity:.55}
+.leaflet-control-layers-toggle{background-image:none!important;width:auto!important;height:auto!important;padding:6px 10px;font-size:.8rem;font-weight:600;color:var(--ink)!important;text-decoration:none}
+.leaflet-control-layers-toggle::after{content:"Layers"}
+.leaflet-control-layers,.leaflet-bar a{background:var(--surface)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.ov.quiet{fill:var(--nodata);fill-opacity:.7}
+.rad{stroke:var(--accent);stroke-dasharray:4 4;fill:var(--accent);fill-opacity:.04;stroke-width:1.2;pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:8px 14px 0;font-size:.8rem;color:var(--ink-2);align-items:center}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend i.sq{border-radius:2px}
+.mapnote{font-size:.78rem;color:var(--muted);padding:0 14px}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;overflow-x:auto}
+.tab{border:0;background:none;padding:12px 12px 10px;cursor:pointer;color:var(--ink-2);font-family:var(--f-display);font-size:1.05rem;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{padding:12px 14px 16px}
+.plot{width:100%;min-height:300px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.stat h3{font-size:1rem;font-weight:600;margin-bottom:2px}
+.stat p{margin:0;font-size:.86rem;color:var(--ink-2)}
+.callout{font-size:.88rem;color:var(--ink-2);margin:0 0 10px;max-width:80ch}
+.empty{padding:40px 10px;text-align:center;color:var(--muted)}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface-2);font-weight:600;font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--accent-soft)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;font-size:.76rem;font-weight:600;border:1px solid currentColor}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.good{color:var(--good)} .pill.warn{color:var(--warn)} .pill.crit{color:var(--crit)}
+.readings{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem;color:var(--ink-2);white-space:normal}
+.readings b{color:var(--ink);font-weight:600}
+.daycards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;margin-bottom:12px}
+.ovlist{margin:6px 0 0;padding:0;list-style:none;font-size:.84rem;max-height:220px;overflow:auto}
+.ovlist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.seg{display:inline-flex;flex-wrap:nowrap;white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--bg);gap:2px}
+.seg-b{border:0;background:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--ink-2)}
+.seg-b[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg-b:disabled{opacity:.45;cursor:default}
+.addev{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.addev summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.05rem;color:var(--accent)}
+.ovlist button{border:0;background:none;color:var(--crit);cursor:pointer;font-size:.8rem}
+tr.sel{background:var(--accent-soft)}
+.tag{font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px}
+footer{margin-top:22px;color:var(--muted);font-size:.8rem;max-width:100ch}
+footer p{margin:6px 0}
+footer a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.chip,.tab,.btn{transition:none}}
+</style>
+
+<header class="top">
+  <div>
+    <h1>Bristol <span>Water Quality</span> Explorer</h1>
+    <p>Surface water samples from the Floating Harbour and Bristol's rivers, set against daily rainfall and Wessex Water storm overflow spills.</p>
+  </div>
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<div class="app">
+  <aside class="rail" aria-label="Filters">
+    <div class="field">
+      <label class="lab" for="param">Measurement</label>
+      <select id="param"></select>
+    </div>
+    <div class="field">
+      <span class="lab">Years</span>
+      <div class="row">
+        <select id="y0" aria-label="From year"></select>
+        <span style="flex:none;color:var(--muted)">to</span>
+        <select id="y1" aria-label="To year"></select>
+      </div>
+      <div class="chips">
+        <button class="chip" data-yr="2020-2026" type="button">Spill-data years</button>
+        <button class="chip" data-yr="2016-2026" type="button">Last 10 years</button>
+        <button class="chip" data-yr="1994-2026" type="button">All years</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lab" for="daypick">Find a date</label>
+      <div class="row">
+        <input type="date" id="daypick" min="1994-01-01" max="2026-12-31">
+        <button class="btn" id="daygo" type="button" style="flex:none">Show day</button>
+      </div>
+      <p class="hint">Jumps to the nearest sampling date and shows rain and spills around it.</p>
+    </div>
+    <div class="field">
+      <span class="lab">Sites</span>
+      <input type="search" id="sitesearch" placeholder="Search site, river or ID" aria-label="Search sites">
+      <div class="row">
+        <button class="btn ghost" id="selshown" type="button">Select shown</button>
+        <button class="btn ghost" id="selnone" type="button">Clear</button>
+      </div>
+      <div class="sitelist" id="sitelist"></div>
+      <p class="hint">Click a site on the map to select it alone. Ctrl or Cmd-click to add it.</p>
+    </div>
+    <div class="field">
+      <span class="lab">Rain and spill window</span>
+      <div class="chips" id="winchips"></div>
+      <p class="hint">Sampling day plus this many days before it.</p>
+    </div>
+    <div class="field">
+      <span class="lab">Storm overflows within</span>
+      <div class="chips" id="radchips"></div>
+      <p class="hint">Distance from each selected site. Overflow data covers Jan 2020 to Jun 2026.</p>
+    </div>
+  </aside>
+
+  <main>
+    <section class="card" aria-label="Map">
+      <div class="card-h"><h2 id="maptitle">Map</h2><p id="mapsub"></p></div>
+      <div class="legend" id="legend"></div>
+      <p class="mapnote" id="mapnote">Click the map to enable scroll-wheel zoom.</p>
+      <div id="map" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card" aria-label="Analysis">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="timeline" type="button">Timeline</button>
+        <button class="tab" role="tab" data-tab="trends" type="button">Trends</button>
+        <button class="tab" role="tab" data-tab="levels" type="button">Levels by year</button>
+        <button class="tab" role="tab" data-tab="drivers" type="button">Rain &amp; spills</button>
+        <button class="tab" role="tab" data-tab="events" type="button">Events</button>
+        <button class="tab" role="tab" data-tab="day" type="button">Day view</button>
+        <button class="tab" role="tab" data-tab="table" type="button">Samples</button>
+      </div>
+      <div class="panel" id="p-timeline">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px;gap:8px 16px">
+          <div class="seg" role="group" aria-label="Chart view" style="flex:none"><button type="button" class="seg-b" data-view="detailed">Detailed values</button><button type="button" class="seg-b" data-view="simple">Low / Elevated / High</button></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:10px"><span class="lab">Compare with</span><div class="chips" id="cmpchips"></div></div>
+        <p class="hint" id="simplehint" style="margin:-4px 0 8px"></p>
+        <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:6px"><p class="callout" id="tl-note" style="flex:1 1 320px;margin:0"></p><label class="row" style="flex:none;gap:6px;font-size:.88rem"><input type="checkbox" id="showev" checked> Show events</label></div>
+        <div id="tl" class="plot" style="height:640px"></div>
+      </div>
+      <div class="panel" id="p-levels" hidden>
+        <p class="callout" id="lv-note"></p>
+        <div class="row" style="justify-content:space-between;align-items:center;gap:8px 14px;margin-top:6px">
+          <h3 id="lv-title" style="flex:1 1 240px;font-size:1.1rem"></h3>
+          <div class="seg" role="group" aria-label="Season" style="flex:none"><button type="button" class="seg-b" data-lvper="year">Full year</button><button type="button" class="seg-b" data-lvper="summer">Summer season (1 Apr – 31 Oct)</button></div>
+          <div class="seg" role="group" aria-label="Units" style="flex:none"><button type="button" class="seg-b" data-lvunit="pct">% of samples</button><button type="button" class="seg-b" data-lvunit="n">Number of samples</button></div>
+        </div>
+        <div class="nospill" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:.9rem">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="lvnospill"> Leave out samples taken after a storm overflow spill</label>
+          <span>within</span><select id="lvkm" style="width:auto" aria-label="Distance to overflow"><option value="1">1 km</option><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select>
+          <span>on the sampling day or the</span><select id="lvdays" style="width:auto" aria-label="Days before sampling"><option>1</option><option>2</option><option>3</option><option selected>5</option><option>7</option></select><span>days before</span>
+        </div>
+        <div id="tr-levels" class="plot" style="height:380px"></div>
+        <div class="tablewrap" style="margin-top:12px"><table id="lvtable"></table></div>
+      </div>
+      <div class="panel" id="p-trends" hidden>
+        <div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+          <label class="row" style="flex:none;gap:6px"><input type="checkbox" id="split"> Split by site</label>
+        </div>
+        <div class="grid2" id="trendstats" style="margin-bottom:10px"></div>
+        <div id="tr-year" class="plot" style="height:360px"></div>
+        <div class="grid2">
+          <div id="tr-exc" class="plot" style="height:300px"></div>
+          <div id="tr-month" class="plot" style="height:300px"></div>
+        </div>
+      </div>
+      <div class="panel" id="p-drivers" hidden>
+        <p class="callout" id="dr-note"></p>
+        <div class="grid2" id="drstats" style="margin-bottom:10px"></div>
+        <div class="grid2">
+          <div id="dr-rainband" class="plot" style="height:300px"></div>
+          <div id="dr-spillband" class="plot" style="height:300px"></div>
+          <div id="dr-rain" class="plot" style="height:340px"></div>
+          <div id="dr-spill" class="plot" style="height:340px"></div>
+        </div>
+      </div>
+      <div class="panel" id="p-events" hidden>
+        <div class="row" style="margin-bottom:10px;align-items:flex-end">
+          <div class="field" style="flex:1 1 220px"><label class="lab" for="evseries">Event</label><select id="evseries"></select></div>
+          <div class="field" style="flex:1 1 180px"><label class="lab" for="evwin">Compare with</label><select id="evwin"><option value="7">7 days either side</option><option value="14" selected>14 days either side</option><option value="21">21 days either side</option><option value="28">28 days either side</option></select></div>
+        </div>
+        <p class="callout" id="ev-note"></p>
+        <div class="grid2" id="evstats" style="margin-bottom:12px"></div>
+        <div class="tablewrap"><table id="evtable"></table></div>
+        <p class="hint" style="margin:6px 0 12px">Click a row to zoom the chart at the bottom to that event.</p>
+        <div class="grid2">
+          <div id="ev-align" class="plot" style="height:380px"></div>
+          <div id="ev-sum" class="plot" style="height:380px"></div>
+        </div>
+        <h3 id="ev-zoomtitle" style="font-size:1.1rem;margin:14px 0 4px"></h3>
+        <div id="ev-tl" class="plot" style="height:520px"></div>
+        <details class="addev">
+          <summary>Add your own event</summary>
+          <form id="evform" class="row" style="margin-top:10px;align-items:flex-end">
+            <div class="field" style="flex:2 1 200px"><label class="lab" for="evname">Name</label><input type="search" id="evname" list="evnames" placeholder="e.g. Bristol Harbour Festival" autocomplete="off"></div>
+            <div class="field" style="flex:1 1 140px"><label class="lab" for="evstart">Start</label><input type="date" id="evstart"></div>
+            <div class="field" style="flex:1 1 140px"><label class="lab" for="evend">End</label><input type="date" id="evend"></div>
+            <button class="btn" type="submit" style="flex:none">Add event</button>
+            <datalist id="evnames"></datalist>
+          </form>
+          <p class="hint" id="evmsg" style="margin-top:6px">Use an existing name to add dates to that series. Events you add are saved in this browser only.</p>
+          <ul class="ovlist" id="evcustom"></ul>
+        </details>
+      </div>
+      <div class="panel" id="p-day" hidden>
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn ghost" id="dayprev" type="button" style="flex:none">&larr; Previous sampling day</button>
+          <h2 id="daytitle" style="flex:1 1 auto;font-size:1.35rem;text-align:center"></h2>
+          <button class="btn ghost" id="daynext" type="button" style="flex:none">Next sampling day &rarr;</button>
+        </div>
+        <div class="daycards" id="daycards"></div>
+        <div id="dayrain" class="plot" style="height:220px;min-height:220px"></div>
+        <div class="tablewrap" style="margin-top:10px"><table id="daytable"></table></div>
+      </div>
+      <div class="panel" id="p-table" hidden>
+        <div class="row" style="margin-bottom:10px">
+          <input type="search" id="tsearch" placeholder="Filter by site, river or date (e.g. 2023-07)" aria-label="Filter samples">
+          <span class="hint" id="tcount" style="flex:none"></span>
+        </div>
+        <div class="tablewrap" style="max-height:620px"><table id="stable"></table></div>
+        <div style="text-align:center;margin-top:10px"><button class="btn ghost" id="tmore" type="button">Show more</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <p><b>Sources.</b> Samples: your file <i>Surface_Water_Quality.csv</i> (43 sites, 1994 to 2026). Rainfall: daily totals for central Bristol from the Open-Meteo historical weather archive (ERA5 reanalysis, a modelled grid value, not a rain gauge). Storm overflow spills: Wessex Water Event Duration Monitoring, published through the Stream National Storm Overflow Hub, for 244 overflows in and around Bristol, January 2020 to June 2026. Waterways and base map: &copy; OpenStreetMap contributors.</p>
+  <p><b>Reading the charts.</b> Bacteria thresholds (E. coli 500 and 1,000 cfu/100 ml; enterococci 200 and 400) are indicative single-sample guides drawn from inland bathing water standards, which are formally assessed on percentiles over four seasons. A zero bacteria count is plotted at 1 on log scales. Distance to an overflow ignores whether it is upstream or downstream of a site. Some readings in the source file look like entry errors (for example a temperature of 136); they are shown as recorded.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.1.1/plotly-cartesian.min.js"></script>
+<script src="data.js"></script>
+<script>
+(function(){
+"use strict";
+const D = window.WQ_DATA;
+const EPOCH = Date.UTC(1994,0,1);
+const DAYMS = 864e5;
+const dayDate = d => new Date(EPOCH + d*DAYMS);
+const iso = d => dayDate(d).toISOString().slice(0,10);
+const isoDay = s => Math.round((Date.parse(s+"T00:00:00Z") - EPOCH)/DAYMS);
+const fmtDay = d => dayDate(d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const fmtShort = d => dayDate(d).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const nf = (v,dp) => v==null||isNaN(v) ? "–" : (Math.abs(v)>=1000 ? Math.round(v).toLocaleString("en-GB") : (+v.toFixed(dp==null?2:dp)).toLocaleString("en-GB"));
+
+/* ---------- parameter metadata ---------- */
+const META = {
+  E_Coli_as_CFU:{l:"E. coli",u:"cfu/100 ml",log:1,thr:[500,1000]},
+  Presumptive_Enterococci_as_CFU:{l:"Intestinal enterococci",u:"cfu/100 ml",log:1,thr:[200,400]},
+  Total_Coliforms_as_CFU:{l:"Total coliforms",u:"cfu/100 ml",log:1},
+  E_Coli_as_MPN:{l:"E. coli (MPN method)",u:"MPN/100 ml",log:1,thr:[500,1000]},
+  Total_Coliforms_as_MPN:{l:"Total coliforms (MPN method)",u:"MPN/100 ml",log:1},
+  Faecal_Coliforms:{l:"Faecal coliforms",u:"cfu/100 ml",log:1},
+  Faecal_Streptococci_as_CFU:{l:"Faecal streptococci",u:"cfu/100 ml",log:1},
+  Clostridium_Pefingens:{l:"Clostridium perfringens",u:"cfu",log:1},
+  Salmonella:{l:"Salmonella",u:""},
+  Temperature:{l:"Water temperature",u:"°C"},
+  pH:{l:"pH",u:""},
+  Conductivity:{l:"Conductivity",u:""},
+  Salinity:{l:"Salinity",u:""},
+  Dissolved_Oxygen:{l:"Dissolved oxygen",u:"mg/l"},
+  Dissolved_Oxygen_pc:{l:"Dissolved oxygen saturation",u:"%"},
+  Biological_Oxygen_Demand:{l:"Biochemical oxygen demand",u:"mg/l"},
+  Chemical_Oxygen_Demand:{l:"Chemical oxygen demand",u:"mg/l"},
+  Phosphate_as_Phosphorous:{l:"Phosphate (as P)",u:""},
+  Ammonium_as_NH4:{l:"Ammonium (as NH4)",u:""},
+  Ammonium_as_nitrate:{l:"Ammonium (as N)",u:""},
+  Nitrite:{l:"Nitrite",u:""},
+  Nitrate:{l:"Nitrate",u:""},
+  Suspended_Solids:{l:"Suspended solids",u:""},
+  Turbidity:{l:"Turbidity",u:""}
+};
+const PIDX = {}; D.params.forEach((p,i)=>PIDX[p]=i);
+const PORDER = Object.keys(META).filter(p=>p in PIDX);
+const label = p => META[p].l + (META[p].u ? " ("+META[p].u+")" : "");
+
+/* ---------- derived data ---------- */
+const SITES = D.sites;
+SITES.forEach((s,i)=>{ s.i=i; });
+const SAMPLES = D.samples;
+SAMPLES.forEach(s=>{ s.y = dayDate(s.d).getUTCFullYear(); });
+const sampleDays = [...new Set(SAMPLES.map(s=>s.d))].sort((a,b)=>a-b);
+const RAIN0 = D.rainStart, RAIN = D.rain;
+const rainOn = d => { const v = RAIN[d-RAIN0]; return v==null ? null : v; };
+const CSO0 = isoDay(D.csoRange[0]), CSO1 = isoDay(D.csoRange[1]);
+const OVS = D.overflows;
+const ovDays = OVS.map(()=>new Map());
+D.csoDaily.forEach(([o,d,m])=>ovDays[o].set(d,m));
+function hav(a,b,c,d){const R=6371,r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+const nearCache = new Map();
+function nearOvs(si, km){
+  const k = si+"|"+km; if (nearCache.has(k)) return nearCache.get(k);
+  const s = SITES[si]; const out=[];
+  OVS.forEach((o,i)=>{ if (km==="all" || hav(s.lat,s.lon,o.lat,o.lon)<=km) out.push(i); });
+  nearCache.set(k,out); return out;
+}
+function rainWin(d,n){ let t=0; for(let k=0;k<=n;k++){ const v=rainOn(d-k); if(v==null) return null; t+=v; } return t; }
+function spillWin(si,d,n,km){ if (d-n<CSO0 || d>CSO1) return null; let m=0; for(const o of nearOvs(si,km)){ const mp=ovDays[o]; for(let k=0;k<=n;k++){ m+=mp.get(d-k)||0; } } return m/60; }
+
+/* ---------- state ---------- */
+const TABS = ["timeline","trends","levels","drivers","events","day","table"];
+const DEFAULT_SITES = ["d1","d5","d4","d18"];
+const S = { param:"E_Coli_as_CFU", y0:2020, y1:2026, sites:new Set(SITES.filter(s=>DEFAULT_SITES.includes(s.id)).map(s=>s.i)),
+  win:2, km:2, tab:"timeline", showEv:true, simple:false, lvPer:"year", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
+try { const t = localStorage.getItem("wq-tab"); if (t) S.tab = t; S.simple = localStorage.getItem("wq-view")==="simple"; JSON.parse(localStorage.getItem("wq-cmp")||"[]").forEach(k=>{ if(k>=1&&k<=5) S.cmp.add(k); }); } catch(e){}
+
+/* ---------- colours from tokens ---------- */
+let C = {};
+function readTokens(){
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  C = { ink:g("--ink"), ink2:g("--ink-2"), muted:g("--muted"), line:g("--line"), surface:g("--surface"), bg:g("--bg"), accent:g("--accent"),
+        rain:g("--rain"), spill:g("--spill"), spillSoft:g("--spill-soft"), good:g("--good"), warn:g("--warn"), crit:g("--crit"), nodata:g("--nodata"),
+        series:[1,2,3,4,5,6,7,8].map(i=>g("--s"+i)) };
+}
+readTokens();
+const SYMBOLS = ["circle","square","diamond","triangle-up","cross","triangle-down","x","star"];
+function siteStyle(si){
+  const order = [...S.sites].sort((a,b)=>a-b); const k = order.indexOf(si);
+  if (k<0 || k>=8) return {color:C.muted, symbol:"circle-open"};
+  return {color:C.series[k], symbol:SYMBOLS[k]};
+}
+function status(p,v){ const t=META[p].thr; if(!t||v==null) return null; return v<=t[0]?"good":v<=t[1]?"warn":"crit"; }
+const STATUS_LABEL = {good:"Low",warn:"Elevated",crit:"High"};
+
+/* ---------- helpers ---------- */
+function filtered(opts={}){
+  const pi = PIDX[S.param]; const out=[];
+  for (const s of SAMPLES){
+    if (s[pi]===undefined) continue;
+    if (!opts.allSites && !S.sites.has(s.s)) continue;
+    if (s.y<S.y0 || s.y>S.y1) continue;
+    out.push(s);
+  }
+  return out;
+}
+const val = s => s[PIDX[S.param]];
+const plotVal = v => META[S.param].log ? Math.max(v,1) : v;
+function quant(a,q){ if(!a.length) return null; const b=[...a].sort((x,y)=>x-y); const p=(b.length-1)*q, lo=Math.floor(p), hi=Math.ceil(p); return b[lo]+(b[hi]-b[lo])*(p-lo); }
+function spearman(x,y){
+  const n=x.length; if(n<8) return null;
+  const rank=a=>{const idx=a.map((v,i)=>[v,i]).sort((p,q)=>p[0]-q[0]); const r=new Array(n); let i=0; while(i<n){let j=i; while(j+1<n&&idx[j+1][0]===idx[i][0]) j++; const avg=(i+j)/2+1; for(let k=i;k<=j;k++) r[idx[k][1]]=avg; i=j+1;} return r;};
+  const rx=rank(x), ry=rank(y); const mx=(n+1)/2; let a=0,b=0,c=0;
+  for(let i=0;i<n;i++){a+=(rx[i]-mx)*(ry[i]-mx); b+=(rx[i]-mx)**2; c+=(ry[i]-mx)**2;}
+  return a/Math.sqrt(b*c);
+}
+function rhoWords(r){ if(r==null) return "not enough samples"; const a=Math.abs(r); const s=a<.1?"no real":a<.3?"a weak":a<.5?"a moderate":"a strong"; return s+(a<.1?"":(r>0?" positive":" negative"))+" link"; }
+function theilSen(pts){ if(pts.length<4) return null; const sl=[]; for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++) if(pts[j][0]!==pts[i][0]) sl.push((pts[j][1]-pts[i][1])/(pts[j][0]-pts[i][0])); return quant(sl,.5); }
+const kmLabel = () => S.km==="all" ? "anywhere in the Bristol area" : "within "+S.km+" km";
+const winLabel = () => S.win===0 ? "on the sampling day" : "over the sampling day and "+S.win+" day"+(S.win>1?"s":"")+" before";
+
+function baseLayout(extra){
+  return Object.assign({
+    paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    font:{family:getComputedStyle(document.body).fontFamily, size:12, color:C.ink2},
+    margin:{l:62,r:16,t:36,b:44}, hoverlabel:{bgcolor:C.surface, bordercolor:C.line, font:{color:C.ink}},
+    legend:{orientation:"h", y:-0.14, yanchor:"top", x:0, font:{size:11}},
+    showlegend:true
+  }, extra||{});
+}
+function logRange(vals){ const v=vals.filter(x=>x!=null).map(x=>Math.log10(Math.max(x,1))); if(!v.length) return [0,4]; let lo=Math.min(...v), hi=Math.max(...v); if(hi-lo<1){ const c=(hi+lo)/2; lo=c-.5; hi=c+.5; } return [Math.max(lo-.15,-.1), hi+.15]; }
+function ax(extra){ if(extra&&extra.type==="log"&&extra.dtick==null) extra.dtick=1; return Object.assign({gridcolor:C.line, zerolinecolor:C.line, linecolor:C.line, tickcolor:C.line, tickfont:{color:C.muted}, title:{font:{color:C.ink2,size:12}}, automargin:true}, extra||{}); }
+const CFG = {displaylogo:false, responsive:true, displayModeBar:false};
+function titleCfg(t){ return {text:t, x:0, xanchor:"left", font:{family:"Barlow Semi Condensed, sans-serif", size:15, color:C.ink}}; }
+function emptyPlot(id,msg){ const el=document.getElementById(id); el._zoomHooked=false; try{Plotly.purge(el);}catch(e){} el.innerHTML='<div class="empty">'+esc(msg)+'</div>'; }
+function newPlot(id,data,layout){ const el=document.getElementById(id); if(el.querySelector(".empty")) el.innerHTML=""; return Plotly.react(el,data,layout,CFG); }
+
+/* ---------- controls ---------- */
+const $ = id => document.getElementById(id);
+function buildControls(){
+  $("param").innerHTML = PORDER.map(p=>{ const n=SAMPLES.reduce((a,s)=>a+(s[PIDX[p]]!==undefined),0); return '<option value="'+p+'">'+esc(META[p].l)+' ('+n.toLocaleString("en-GB")+')</option>'; }).join("");
+  $("param").value = S.param;
+  const yrs=[]; for(let y=1994;y<=2026;y++) yrs.push('<option>'+y+'</option>');
+  $("y0").innerHTML=yrs.join(""); $("y1").innerHTML=yrs.join("");
+  $("y0").value=S.y0; $("y1").value=S.y1;
+  $("winchips").innerHTML=[0,1,2,3,6].map(n=>'<button type="button" class="chip" data-win="'+n+'">'+(n===0?"Same day":"+"+n+" day"+(n>1?"s":""))+'</button>').join("");
+  $("radchips").innerHTML=[1,2,5,10,"all"].map(k=>'<button type="button" class="chip" data-km="'+k+'">'+(k==="all"?"All Bristol":k+" km")+'</button>').join("");
+  $("param").onchange=e=>{S.param=e.target.value; update();};
+  $("y0").onchange=e=>{S.y0=+e.target.value; if(S.y0>S.y1){S.y1=S.y0;$("y1").value=S.y1;} update();};
+  $("y1").onchange=e=>{S.y1=+e.target.value; if(S.y1<S.y0){S.y0=S.y1;$("y0").value=S.y0;} update();};
+  document.querySelectorAll("[data-yr]").forEach(b=>b.onclick=()=>{const [a,z]=b.dataset.yr.split("-").map(Number); S.y0=a;S.y1=z;$("y0").value=a;$("y1").value=z;update();});
+  $("winchips").onclick=e=>{const b=e.target.closest("[data-win]"); if(!b) return; S.win=+b.dataset.win; update();};
+  $("radchips").onclick=e=>{const b=e.target.closest("[data-km]"); if(!b) return; S.km=b.dataset.km==="all"?"all":+b.dataset.km; update();};
+  $("sitesearch").oninput=e=>{S.siteq=e.target.value.trim().toLowerCase(); renderSiteList();};
+  $("selshown").onclick=()=>{ visibleSites().forEach(i=>S.sites.add(i)); update(); };
+  $("selnone").onclick=()=>{ S.sites.clear(); update(); };
+  document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
+  document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ S.simple=b.dataset.view==="simple"; try{localStorage.setItem("wq-view",S.simple?"simple":"detailed");}catch(e){} renderTab(); });
+  $("cmpchips").innerHTML=[1,2,3,4,5].map(k=>'<button type="button" class="chip" data-cmp="'+k+'">'+k+' yr'+(k>1?'s':'')+' earlier</button>').join("")+'<button type="button" class="chip" data-cmp="0">Clear</button>';
+  $("cmpchips").onclick=e=>{ const b=e.target.closest("[data-cmp]"); if(!b) return; const k=+b.dataset.cmp; if(!k) S.cmp.clear(); else S.cmp.has(k)?S.cmp.delete(k):S.cmp.add(k); try{localStorage.setItem("wq-cmp",JSON.stringify([...S.cmp]));}catch(e){} renderTab(); };
+  document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ S.lvPer=b.dataset.lvper; renderTab(); });
+  $("lvnospill").onchange=e=>{ S.lvNoSpill=e.target.checked; renderTab(); };
+  $("lvkm").onchange=e=>{ S.lvKm=+e.target.value; renderTab(); };
+  $("lvdays").onchange=e=>{ S.lvDays=+e.target.value; renderTab(); };
+  document.querySelectorAll("[data-lvunit]").forEach(b=>b.onclick=()=>{ S.lvUnit=b.dataset.lvunit; renderTab(); });
+  $("showev").onchange=e=>{S.showEv=e.target.checked; renderTab();};
+  $("evseries").onchange=e=>{S.evSeries=e.target.value; S.evSel=null; renderTab();};
+  $("evwin").onchange=e=>{S.evW=+e.target.value; renderTab();};
+  $("evform").onsubmit=e=>{ e.preventDefault(); const n=$("evname").value.trim(), a=$("evstart").value, b=$("evend").value||a;
+    if(!n||!a){ $("evmsg").textContent="Enter a name and a start date."; return; }
+    if(b<a){ $("evmsg").textContent="The end date must be on or after the start date."; return; }
+    CUSTOM.push({series:n,start:a,end:b}); saveCustom(); S.evSeries=n; S.evSel=null; $("evmsg").textContent="Added "+n+", "+a+(b!==a?" to "+b:"")+"."; $("evstart").value=""; $("evend").value=""; renderTab(); };
+  $("split").onchange=e=>{S.split=e.target.checked; renderTab();};
+  $("daygo").onclick=()=>{ const v=$("daypick").value; if(!v) return; goDay(isoDay(v)); };
+  $("daypick").onkeydown=e=>{ if(e.key==="Enter") $("daygo").click(); };
+  $("dayprev").onclick=()=>stepDay(-1); $("daynext").onclick=()=>stepDay(1);
+  $("tsearch").oninput=e=>{S.tq=e.target.value.trim().toLowerCase(); S.tlimit=250; renderTable();};
+  $("tmore").onclick=()=>{S.tlimit+=500; renderTable();};
+}
+function syncChips(){
+  document.querySelectorAll("[data-win]").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.win===S.win));
+  document.querySelectorAll("[data-km]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.km)===String(S.km)));
+  document.querySelectorAll("[data-yr]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.yr===S.y0+"-"+S.y1));
+}
+function visibleSites(){ const q=S.siteq; return SITES.filter(s=>!q || (s.name+" "+s.river+" "+s.id).toLowerCase().includes(q)).map(s=>s.i); }
+function renderSiteList(){
+  const pi=PIDX[S.param]; const counts=new Array(SITES.length).fill(0);
+  for(const s of SAMPLES) if(s[pi]!==undefined && s.y>=S.y0 && s.y<=S.y1) counts[s.s]++;
+  const vis=new Set(visibleSites()); const groups=new Map();
+  SITES.forEach(s=>{ if(!vis.has(s.i)) return; if(!groups.has(s.river)) groups.set(s.river,[]); groups.get(s.river).push(s); });
+  const gs=[...groups.entries()].sort((a,b)=>a[0]==="Floating Harbour"?-1:b[0]==="Floating Harbour"?1:a[0].localeCompare(b[0]));
+  $("sitelist").innerHTML = gs.length ? gs.map(([r,list])=>{
+    const all=list.every(s=>S.sites.has(s.i));
+    return '<div class="grp"><label class="grp-h"><input type="checkbox" data-grp="'+esc(r)+'"'+(all?" checked":"")+'> '+esc(r)+'<span class="n">'+list.length+'</span></label>'+
+      list.map(s=>{ const st=siteStyle(s.i); const on=S.sites.has(s.i);
+        return '<label class="site"><input type="checkbox" data-site="'+s.i+'"'+(on?" checked":"")+'><span class="sw" style="background:'+(on?st.color:"transparent")+'"></span>'+esc(s.name)+' <span class="id">'+esc(s.id)+'</span><span class="n num" title="Samples of this measurement in the chosen years">'+counts[s.i]+'</span></label>'; }).join("")+'</div>';
+  }).join("") : '<div class="empty" style="padding:16px">No sites match.</div>';
+  $("sitelist").querySelectorAll("[data-site]").forEach(c=>c.onchange=()=>{ const i=+c.dataset.site; c.checked?S.sites.add(i):S.sites.delete(i); update(); });
+  $("sitelist").querySelectorAll("[data-grp]").forEach(c=>c.onchange=()=>{ SITES.filter(s=>s.river===c.dataset.grp && vis.has(s.i)).forEach(s=> c.checked?S.sites.add(s.i):S.sites.delete(s.i)); update(); });
+}
+
+/* ---------- KPIs ---------- */
+function renderKpis(){
+  const f=filtered(); const vals=f.map(val);
+  const med=quant(vals,.5); const thr=META[S.param].thr;
+  const exc = thr && vals.length ? Math.round(100*vals.filter(v=>v>thr[1]).length/vals.length) : null;
+  $("kpis").innerHTML = [
+    ['<span class="num">'+f.length.toLocaleString("en-GB")+'</span>',"samples in view"],
+    ['<span class="num">'+S.sites.size+'</span>',"sites selected"],
+    ['<span class="num">'+nf(med)+'</span>',"median "+META[S.param].l],
+    exc!=null ? ['<span class="num">'+exc+'%</span>',"above "+thr[1].toLocaleString("en-GB")] : null
+  ].filter(Boolean).map(([b,s])=>'<div class="kpi"><b>'+b+'</b><small>'+esc(s)+'</small></div>').join("");
+}
+
+/* ---------- map ---------- */
+let map, siteLayer, ovLayer, radLayer, tileFails=0, tiles;
+function initMap(){
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  map = L.map("map",{zoomControl:true, zoomAnimation:!calm, fadeAnimation:!calm, markerZoomAnimation:!calm, scrollWheelZoom:false}).setView([51.455,-2.595],12);
+  tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18, attribution:"&copy; OpenStreetMap contributors"});
+  tiles.on("tileerror",()=>{ tileFails++; if(tileFails===4){ map.removeLayer(tiles); $("mapnote").textContent="Street map tiles could not load here, so the map shows waterways only."; } });
+  tiles.addTo(map);
+  const wpane = map.createPane("water"); wpane.style.zIndex=350;
+  D.waterPolys.forEach(w=>L.polygon(w.p,{pane:"water",className:"ww-poly",weight:1,interactive:false}).addTo(map));
+  D.waterLines.forEach(w=>L.polyline(w.p,{pane:"water",className:"ww-line",weight:w.k==="r"?3:w.k==="c"?2.5:1.3,interactive:false}).addTo(map));
+  radLayer = L.layerGroup().addTo(map);
+  ovLayer = L.layerGroup().addTo(map);
+  siteLayer = L.layerGroup().addTo(map);
+  L.control.layers(null,{"Storm overflows":ovLayer,"Search radius":radLayer},{collapsed:true,position:"topright"}).addTo(map);
+  const pts = SITES.map(s=>[s.lat,s.lon]); map.fitBounds(pts,{padding:[20,20],animate:false});
+  map.on("click focus",()=>map.scrollWheelZoom.enable()); map.on("mouseout blur",()=>map.scrollWheelZoom.disable());
+}
+const SEQ = ["#cde2fb","#86b6ef","#3987e5","#1c5cab","#0d366b"];
+function renderMap(){
+  siteLayer.clearLayers(); radLayer.clearLayers(); ovLayer.clearLayers();
+  const p=S.param, pi=PIDX[p], m=META[p];
+  const dayMode = S.tab==="day" && S.day!=null;
+  const per = SITES.map(()=>[]);
+  for(const s of SAMPLES){ if(s[pi]===undefined) continue; if(dayMode ? s.d!==S.day : (s.y<S.y0||s.y>S.y1)) continue; per[s.s].push(s[pi]); }
+  const meds = per.map(a=>a.length?quant(a,.5):null);
+  let colorOf, legend;
+  if (m.thr){
+    colorOf = v => v==null?C.nodata:({good:C.good,warn:C.warn,crit:C.crit})[status(p,v)];
+    legend = '<span><i style="background:'+C.good+'"></i>Low (&le; '+m.thr[0]+')</span><span><i style="background:'+C.warn+'"></i>Elevated (&le; '+m.thr[1].toLocaleString("en-GB")+')</span><span><i style="background:'+C.crit+'"></i>High (&gt; '+m.thr[1].toLocaleString("en-GB")+')</span>';
+  } else {
+    const vs = meds.filter(v=>v!=null).sort((a,b)=>a-b);
+    const br = [.2,.4,.6,.8].map(q=>quant(vs,q));
+    colorOf = v => { if(v==null) return C.nodata; let k=0; while(k<4 && v>br[k]) k++; return SEQ[k]; };
+    legend = vs.length ? SEQ.map((c,k)=>'<span><i style="background:'+c+'"></i>'+(k===0?"&le; "+nf(br[0]):k===4?"&gt; "+nf(br[3]):nf(br[k-1])+"–"+nf(br[k]))+'</span>').join("") : "";
+  }
+  legend += '<span><i style="background:'+C.nodata+'"></i>No samples</span><span><i class="sq" style="background:'+C.spill+'"></i>Storm overflow (size = spill hours)</span>';
+  $("legend").innerHTML = legend;
+  $("maptitle").textContent = dayMode ? META[p].l+" on "+fmtShort(S.day) : "Median "+META[p].l+", "+S.y0+(S.y1!==S.y0?"–"+S.y1:"");
+  $("mapsub").textContent = "Circles are sampling sites. A dark ring marks a selected site.";
+  // radius rings
+  if (S.km!=="all") S.sites.forEach(i=>{ const s=SITES[i]; L.circle([s.lat,s.lon],{radius:S.km*1000,className:"rad",interactive:false}).addTo(radLayer); });
+  // overflows: spill hours within selected years (clipped to data coverage)
+  const d0=Math.max(isoDay(S.y0+"-01-01"),CSO0), d1=Math.min(isoDay(S.y1+"-12-31"),CSO1);
+  const near = new Set(); S.sites.forEach(i=>nearOvs(i,S.km).forEach(o=>near.add(o)));
+  OVS.forEach((o,i)=>{
+    let mins=0, days=0; if(d0<=d1) ovDays[i].forEach((mm,d)=>{ if(d>=d0&&d<=d1){mins+=mm;days++;} });
+    const h=mins/60; const r = h>0 ? Math.min(2.5+Math.sqrt(h)/3.5,11) : 2;
+    const mk = L.circleMarker([o.lat,o.lon],{radius:r,className:"ov"+(h>0?"":" quiet"),weight:1});
+    mk.bindPopup('<b>'+esc(o.name)+'</b><br>Into: '+esc(o.wc||"not stated")+'<br>'+(d0<=d1?'<span class="num">'+nf(h,0)+' spill hours on '+days+' days</span>, '+Math.max(S.y0,2020)+'–'+Math.min(S.y1,2026):'No overflow data for these years')+(near.has(i)?'<br><i>Counted for the selected sites</i>':''));
+    mk.addTo(ovLayer);
+  });
+  // sites
+  SITES.forEach((s,i)=>{
+    const sel=S.sites.has(i); const v=meds[i];
+    const mk=L.circleMarker([s.lat,s.lon],{radius:sel?9:7,color:sel?C.ink:C.surface,weight:sel?3:1.5,fillColor:colorOf(v),fillOpacity:.95});
+    mk.bindTooltip('<b>'+esc(s.name)+'</b> · '+esc(s.river)+'<br>'+(v==null?'No samples':(dayMode?'':'Median ')+nf(v)+' '+esc(m.u)+' <span style="color:'+C.muted+'">('+per[i].length+' sample'+(per[i].length===1?'':'s')+')</span>'));
+    mk.on("click",e=>{ const add=e.originalEvent.ctrlKey||e.originalEvent.metaKey; if(add){ sel?S.sites.delete(i):S.sites.add(i);} else { S.sites=new Set([i]); } update(); });
+    mk.addTo(siteLayer);
+  });
+}
+
+/* ---------- timeline ---------- */
+function renderTimeline(){
+  const d0=isoDay(S.y0+"-01-01"), d1=Math.min(isoDay(S.y1+"-12-31"), RAIN0+RAIN.length-1);
+  $("tl-note").innerHTML = "Top: each sample at the selected sites. Middle: daily rainfall. Bottom: total spill hours per day from storm overflows "+esc(kmLabel())+" of the selected sites."+(S.showEv?" Shaded bands mark events (see the Events tab).":"")+" Drag across any panel to zoom; double-click to reset.";
+  const can=!!META[S.param].thr;
+  document.querySelectorAll("[data-view]").forEach(b=>{ b.setAttribute("aria-pressed", String((b.dataset.view==="simple")===(S.simple&&can))); if(b.dataset.view==="simple") b.disabled=!can; });
+  document.querySelectorAll("[data-cmp]").forEach(b=>{ const k=+b.dataset.cmp; b.setAttribute("aria-pressed", String(k?S.cmp.has(k):false)); if(!k) b.hidden=!S.cmp.size; });
+  const cmpNote = S.cmp.size ? " Earlier years are moved forward onto the same calendar dates, so they line up with the current period. Rain and spill panels show the current period only." : "";
+  $("simplehint").textContent = (can ? (S.simple?"Each sample is placed in a band: Low ≤ "+META[S.param].thr[0].toLocaleString("en-GB")+", Elevated ≤ "+META[S.param].thr[1].toLocaleString("en-GB")+", High above that ("+META[S.param].u+"). Hover for the exact value.":"") : "The Low / Elevated / High view is available for E. coli and intestinal enterococci.") + cmpNote;
+  drawTimeline("tl",d0,d1,{selector:true});
+}
+const VIEW={};
+function trackZoom(el,vkey){
+  const g=document.getElementById(el); g._vkey=vkey; if(g._zoomHooked||!g.on) return; g._zoomHooked=true;
+  g.on("plotly_relayout",ev=>{ const a=ev["xaxis.range[0]"], b=ev["xaxis.range[1]"], r=ev["xaxis.range"];
+    if(a!=null&&b!=null) VIEW[el]={key:g._vkey,r:[a,b]}; else if(r) VIEW[el]={key:g._vkey,r:r.slice()}; else if(ev["xaxis.autorange"]) delete VIEW[el]; });
+}
+function drawTimeline(el,d0,d1,opts){
+  const p=S.param, m=META[p], pi=PIDX[p]; const vkey=d0+"|"+d1;
+  if(!S.sites.size){ emptyPlot(el,"Select one or more sites from the list or the map."); return; }
+  const f=SAMPLES.filter(s=>s[pi]!==undefined && S.sites.has(s.s) && s.d>=d0 && s.d<=d1);
+  const bySite=new Map(); f.forEach(s=>{ if(!bySite.has(s.s)) bySite.set(s.s,[]); bySite.get(s.s).push(s); });
+  const traces=[];
+  const simple=S.simple && !!m.thr;
+  const LEVELS=[["good","Low",C.good],["warn","Elevated",C.warn],["crit","High",C.crit]];
+  const jit=s=>{ let h=(s.d*73856093)^(s.s*19349663); h=((h>>>0)%1000)/1000; return (h-.5)*.5; };
+  const lvl=v=>({good:0,warn:1,crit:2})[status(p,v)];
+  const yOf=s=> simple ? lvl(s[pi])+jit(s) : plotVal(s[pi]);
+  const shiftIso=(d,k)=>{ const t=dayDate(d); t.setUTCFullYear(t.getUTCFullYear()+k); return t.toISOString().slice(0,10); };
+  const extras=s=>[nf(rainWin(s.d,S.win),1),(()=>{const h=spillWin(s.s,s.d,S.win,S.km);return h==null?"no data":nf(h,1)+" h";})()];
+  const cmp=[...S.cmp].sort((a,b)=>a-b);
+  const cmpSamples=[];
+  const ptTrace=(arr,name,color,k,extra)=>Object.assign({type:"scatter",mode:"markers",name:cmp.length?name:name+" ("+arr.length+")",x:arr.map(s=>k?shiftIso(s.d,k):iso(s.d)),y:arr.map(yOf),
+      customdata:arr.map(s=>[SITES[s.s].name,nf(s[pi]),fmtShort(s.d)].concat(extras(s))),
+      marker:{color,symbol:arr.map(s=>siteStyle(s.s).symbol.replace("-open","")),size:k?7:8,opacity:k?.75:.9,line:{color:C.surface,width:1}},
+      hovertemplate:"<b>%{customdata[0]}</b><br>%{customdata[2]}<br>"+esc(m.l)+": %{customdata[1]} "+esc(m.u)+"<br>Rain in window: %{customdata[3]} mm<br>Spills in window: %{customdata[4]}<extra>"+esc(name)+"</extra>",
+      xaxis:"x",yaxis:"y"},extra||{});
+  if(cmp.length){
+    // previous years first so the current period draws on top
+    cmp.slice().reverse().forEach(k=>{
+      const lo=isoDay(shiftIso(d0,-k)), hi=isoDay(shiftIso(d1,-k));
+      const arr=SAMPLES.filter(s=>s[pi]!==undefined && S.sites.has(s.s) && s.d>=lo && s.d<=hi);
+      cmpSamples.push(...arr);
+      traces.push(ptTrace(arr,k+" year"+(k>1?"s":"")+" earlier",C.series[k],k,{legendrank:100+k}));
+    });
+    traces.push(ptTrace(f,"Current",C.series[0],0,{legendrank:1}));
+  } else if(simple){
+    LEVELS.forEach(([k,name,col])=>{ traces.push(ptTrace(f.filter(s=>status(p,s[pi])===k),name,col,0)); });
+  } else [...S.sites].sort((a,b)=>a-b).forEach(si=>{
+    const arr=bySite.get(si)||[]; const st=siteStyle(si);
+    traces.push(ptTrace(arr,SITES[si].name,st.color,0,{marker:{color:st.color,symbol:st.symbol,size:8,opacity:.85,line:{color:C.surface,width:1}}}));
+  });
+  const rx=[],ry=[]; for(let d=d0; d<=d1; d++){ const v=rainOn(d); if(v==null) continue; rx.push(iso(d)); ry.push(v); }
+  traces.push({type:"scatter",mode:"lines",name:"Daily rainfall",x:rx,y:ry,line:{color:C.rain,width:1,shape:"hvh"},fill:"tozeroy",fillcolor:C.rain+"55",xaxis:"x",yaxis:"y2",hovertemplate:"%{x|%d %b %Y}: %{y:.1f} mm<extra>Rain</extra>",showlegend:false});
+  const near=new Set(); S.sites.forEach(i=>nearOvs(i,S.km).forEach(o=>near.add(o)));
+  const cx=[],cy=[]; const a=Math.max(d0,CSO0), b=Math.min(d1,CSO1);
+  const tot=new Map(); near.forEach(o=>ovDays[o].forEach((mm,d)=>{ if(d>=a&&d<=b) tot.set(d,(tot.get(d)||0)+mm); }));
+  const cnt=new Map(); near.forEach(o=>ovDays[o].forEach((mm,d)=>{ if(d>=a&&d<=b) cnt.set(d,(cnt.get(d)||0)+1); }));
+  for(let d=a; d<=b; d++){ cx.push(iso(d)); cy.push((tot.get(d)||0)/60); }
+  const cc=[]; for(let d=a; d<=b; d++) cc.push(cnt.get(d)||0);
+  if(cx.length) traces.push({type:"scatter",mode:"lines",name:"Spill hours",x:cx,y:cy,customdata:cc,line:{color:C.spill,width:1,shape:"hvh"},fill:"tozeroy",fillcolor:C.spill+"55",xaxis:"x",yaxis:"y3",hovertemplate:"%{x|%d %b %Y}: %{y:.1f} spill hours from %{customdata} overflows<extra>Spills</extra>",showlegend:false});
+  const shapes=[], ann=[];
+  if(simple) LEVELS.forEach(([k,name,col],li)=>shapes.push({type:"rect",xref:"paper",x0:0,x1:1,yref:"y",y0:li-.5,y1:li+.5,fillcolor:col,opacity:.08,line:{width:0},layer:"below"}));
+  if(m.thr && !simple) m.thr.forEach((t,k)=>{ shapes.push({type:"line",xref:"paper",x0:0,x1:1,yref:"y",y0:t,y1:t,line:{color:k?C.crit:C.warn,width:1.2,dash:"dash"}}); ann.push({xref:"paper",x:1,xanchor:"right",yref:"y",y:Math.log10(t),yanchor:"bottom",text:t.toLocaleString("en-GB"),showarrow:false,font:{size:10,color:C.muted}}); });
+  if(d0<CSO0) shapes.push({type:"rect",xref:"x",x0:iso(d0),x1:iso(Math.min(CSO0,d1)),yref:"y3 domain",y0:0,y1:1,fillcolor:C.line,opacity:.5,line:{width:0},layer:"below"});
+  if(d1>CSO1) shapes.push({type:"rect",xref:"x",x0:iso(CSO1),x1:iso(d1),yref:"y3 domain",y0:0,y1:1,fillcolor:C.line,opacity:.5,line:{width:0},layer:"below"});
+  if(S.showEv || opts.events) EVENTS().forEach(e=>{ if(e.b<d0||e.a>d1) return;
+    const held=e.status!=="cancelled";
+    shapes.push({type:"rect",xref:"x",x0:iso(e.a),x1:iso(e.b+1),yref:"paper",y0:0,y1:1,fillcolor:held?C.accent:C.muted,opacity:held?.16:.1,line:{width:held?0:1,color:C.muted,dash:"dot"},layer:"below"});
+    if(d1-d0<800) ann.push({xref:"x",x:iso(e.a),xanchor:"left",yref:"paper",y:1,yanchor:"bottom",text:esc(e.series)+(held?"":" (cancelled)"),showarrow:false,font:{size:10,color:C.ink2}});
+  });
+  if(d1>CSO1 && d0>CSO1) ann.push({xref:"paper",x:.5,yref:"y3 domain",y:.5,text:"No overflow data after June 2026",showarrow:false,font:{size:11,color:C.muted}});
+  if(d0<CSO0 && d1<CSO0 && CSO0-d0<=200) ann.push({xref:"paper",x:.5,yref:"y3 domain",y:.5,text:"No overflow data before 2020",showarrow:false,font:{size:11,color:C.muted}});
+  if(d0<CSO0 && CSO0-d0>200) ann.push({xref:"x",x:iso(Math.round((d0+Math.min(CSO0,d1))/2)),yref:"y3 domain",y:.5,text:"No overflow data before 2020",showarrow:false,font:{size:11,color:C.muted}});
+  const L2 = baseLayout({
+    margin:{l:66,r:16,t:40,b:40},
+    xaxis:ax({type:"date",anchor:"y3",range:(VIEW[el]&&VIEW[el].key===vkey)?VIEW[el].r:[iso(d0),iso(d1+1)],showspikes:true,spikemode:"across",spikethickness:1,spikecolor:C.muted,spikedash:"dot",
+      rangeselector:!opts.selector?undefined:{buttons:[{step:"month",count:6,label:"6m"},{step:"year",count:1,label:"1y"},{step:"year",count:3,label:"3y"},{step:"all",label:"All"}],bgcolor:C.bg,activecolor:C.accent,bordercolor:C.line,borderwidth:1,font:{color:C.ink2},x:1,xanchor:"right",y:1.06}}),
+    yaxis: simple ? ax({domain:[.46,1],range:[-.55,2.55],tickvals:[0,1,2],ticktext:["Low<br>≤ "+m.thr[0].toLocaleString("en-GB"),"Elevated<br>≤ "+m.thr[1].toLocaleString("en-GB"),"High<br>> "+m.thr[1].toLocaleString("en-GB")],showgrid:false,zeroline:false,title:{text:m.l}})
+      : ax(Object.assign({domain:[.46,1],type:m.log?"log":"linear",title:{text:label(p)}}, m.log?{range:logRange(f.concat(cmpSamples).map(s=>s[pi]).concat(m.thr||[]))}:{})),
+    yaxis2:ax({domain:[.25,.42],title:{text:"Rain (mm/day)"},rangemode:"tozero"}),
+    yaxis3:ax({domain:[0,.21],title:{text:"Spill hours/day"},rangemode:"tozero"}),
+    shapes, annotations:ann, hovermode:"closest", uirevision:el+"|"+d0+"|"+d1+"|"+S.param
+  });
+  newPlot(el,traces,L2); trackZoom(el,vkey);
+}
+
+/* ---------- trends ---------- */
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const inSummer = d => { const mo=dayDate(d).getUTCMonth(); return mo>=3 && mo<=9; };
+function renderLevels(){
+  const p=S.param, m=META[p];
+  document.querySelectorAll("[data-lvper]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvper===S.lvPer)));
+  document.querySelectorAll("[data-lvunit]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvunit===S.lvUnit)));
+  if(!m.thr){ $("lv-title").textContent=""; $("lv-note").textContent="Levels are available for E. coli and intestinal enterococci. Choose one of those under Measurement."; emptyPlot("tr-levels","Choose E. coli or intestinal enterococci to see Low, Elevated and High counts."); $("lvtable").innerHTML=""; return; }
+  const f=filtered();
+  const years=[]; for(let y=S.y0;y<=S.y1;y++) years.push(y);
+  const blank=()=>({good:0,warn:0,crit:0,n:0,rm:0,unk:0});
+  const W={}, SM={}; years.forEach(y=>{W[y]=blank(); SM[y]=blank();});
+  const NS=S.lvNoSpill;
+  f.forEach(s=>{ const buckets=[W[s.y]].concat(inSummer(s.d)?[SM[s.y]]:[]);
+    if(NS){ const h=spillWin(s.s,s.d,S.lvDays,S.lvKm); if(h==null){ buckets.forEach(o=>o.unk++); return; } if(h>0){ buckets.forEach(o=>o.rm++); return; } }
+    const st=status(p,s[PIDX[p]]); buckets.forEach(o=>{ o[st]++; o.n++; }); });
+  const lastDay=SAMPLES.reduce((a,s)=>Math.max(a,s.d),0), lastY=dayDate(lastDay).getUTCFullYear();
+  const T=m.thr.map(t=>t.toLocaleString("en-GB"));
+  $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into <b>Low</b> (≤ "+T[0]+"), <b>Elevated</b> (≤ "+T[1]+") and <b>High</b> (above "+T[1]+" "+esc(m.u)+"). "+
+    (S.lvPer==="summer"?"Only samples taken between 1 April and 31 October are counted. ":"")+
+    "Bars and table show the share of each year's samples, so years with more or fewer samples compare fairly. Sample counts are in brackets."+(S.y1>=lastY?" "+lastY+" runs to "+fmtShort(lastDay)+" only.":"");
+  $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
+  if(NS){ const src0=S.lvPer==="summer"?SM:W; const tot=years.reduce((a,y)=>{a.rm+=src0[y].rm;a.unk+=src0[y].unk;a.n+=src0[y].n;return a;},{rm:0,unk:0,n:0});
+    $("lv-note").innerHTML+=' <br><b>Spill filter on:</b> left out '+tot.rm+' sample'+(tot.rm===1?'':'s')+' taken when an overflow within '+S.lvKm+' km of the site spilled on the sampling day or the '+S.lvDays+' days before'+(tot.unk?', and '+tot.unk+' with no spill records to check (spill data covers January 2020 to June 2026)':'')+'. '+tot.n+' samples remain.'; }
+  const src=S.lvPer==="summer"?SM:W; const pct=S.lvUnit==="pct";
+  const ys=years.filter(y=>src[y].n>0);
+  const LV=[["good","Low",C.good],["warn","Elevated",C.warn],["crit","High",C.crit]];
+  $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+(S.lvPer==="summer"?"summer season (1 Apr – 31 Oct)":"whole year")+(NS?", no recent spills":"");
+  if(!ys.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites, years and season.");
+  else newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:ys.map(String),y:ys.map(y=>pct?100*src[y][k]/src[y].n:src[y][k]),
+      customdata:ys.map(y=>[src[y][k],src[y].n,Math.round(100*src[y][k]/src[y].n)]),marker:{color:col,line:{color:C.surface,width:1}},
+      hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} of %{customdata[1]} samples (%{customdata[2]}%)<extra></extra>"})),
+    baseLayout({margin:{l:62,r:16,t:14,b:44},barmode:"stack",bargap:.25,
+      xaxis:ax({type:"category"}),yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),legend:{orientation:"h",y:-0.12,yanchor:"top",x:0,traceorder:"normal"}}));
+  const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
+  const cells=(o,first)=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–"; return ["good","warn","crit"].map((k,i)=>'<td class="r"'+(first&&i===0?' style="border-left:2px solid var(--line)"':'')+'>'+(o.n?'<b>'+pc(k)+'</b> <span style="color:var(--muted);font-size:.75rem">('+o[k]+')</span>':'–')+'</td>').join("")+'<td class="r" style="color:var(--ink-2)">'+o.n+(NS&&(o.rm||o.unk)?' <span style="color:var(--muted);font-size:.75rem" title="'+o.rm+' after spills, '+o.unk+' with no spill data">of '+(o.n+o.rm+o.unk)+'</span>':'')+'</td>'; };
+  const sum=o=>years.reduce((a,y)=>{ ["good","warn","crit","n","rm","unk"].forEach(k=>a[k]+=o[y][k]); return a; },blank());
+  $("lvtable").innerHTML='<thead><tr><th></th><th colspan="4" style="text-align:center;border-left:2px solid var(--line)">Whole year</th><th colspan="4" style="text-align:center;border-left:2px solid var(--line)">Summer season (1 Apr – 31 Oct)</th></tr>'+
+    '<tr><th>Year</th>'+[0,1].map(()=>'<th class="r" style="border-left:2px solid var(--line)">'+dot(C.good)+'Low</th><th class="r">'+dot(C.warn)+'Elevated</th><th class="r">'+dot(C.crit)+'High</th><th class="r">Samples</th>').join("")+'</tr></thead><tbody>'+
+    years.slice().reverse().map(y=>'<tr><td class="num"><b>'+y+'</b>'+(y===lastY?' <span class="tag">to '+esc(fmtShort(lastDay).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+cells(W[y],true)+cells(SM[y],true)+'</tr>').join("")+
+    '<tr style="background:var(--surface-2)"><td><b>All years</b></td>'+cells(sum(W),true)+cells(sum(SM),true)+'</tr></tbody>';
+}
+function renderTrends(){
+  const p=S.param, m=META[p]; const f=filtered();
+  if(!f.length){ ["tr-year","tr-exc","tr-month"].forEach(id=>emptyPlot(id,"No samples of this measurement for the selected sites and years.")); $("trendstats").innerHTML=""; return; }
+  const groups = S.split ? [...S.sites].sort((a,b)=>a-b).map(si=>({name:SITES[si].name, st:siteStyle(si), rows:f.filter(s=>s.s===si)})).filter(g=>g.rows.length) : [{name:"Selected sites combined", st:{color:C.accent,symbol:"circle"}, rows:f}];
+  const traces=[]; const statsHtml=[];
+  groups.forEach(g=>{
+    const byY=new Map(); g.rows.forEach(s=>{ if(!byY.has(s.y)) byY.set(s.y,[]); byY.get(s.y).push(val(s)); });
+    const ys=[...byY.keys()].sort((a,b)=>a-b);
+    const med=ys.map(y=>quant(byY.get(y),.5)), q1=ys.map(y=>quant(byY.get(y),.25)), q3=ys.map(y=>quant(byY.get(y),.75)), n=ys.map(y=>byY.get(y).length);
+    if(!S.split){
+      traces.push({type:"scatter",mode:"lines",x:ys,y:q1.map(plotVal),line:{width:0},hoverinfo:"skip",showlegend:false});
+      traces.push({type:"scatter",mode:"lines",x:ys,y:q3.map(plotVal),line:{width:0},fill:"tonexty",fillcolor:C.accent+"30",name:"Middle 50% of samples",hoverinfo:"skip"});
+    }
+    traces.push({type:"scatter",mode:"lines+markers",name:g.name,x:ys,y:med.map(plotVal),customdata:ys.map((y,i)=>[nf(med[i]),nf(q1[i]),nf(q3[i]),n[i]]),
+      line:{color:g.st.color,width:2},marker:{color:g.st.color,symbol:g.st.symbol,size:8,line:{color:C.surface,width:1}},
+      hovertemplate:"<b>"+esc(g.name)+"</b> %{x}<br>Median %{customdata[0]}<br>Middle 50%: %{customdata[1]} to %{customdata[2]}<br>%{customdata[3]} samples<extra></extra>"});
+    const pts=ys.map((y,i)=>[y,m.log?Math.log10(Math.max(med[i],1)):med[i]]).filter((_,i)=>n[i]>=3);
+    const sl=theilSen(pts);
+    let txt;
+    if(sl==null) txt="Too few years with 3+ samples to estimate a trend.";
+    else if(m.log){ const pct=(Math.pow(10,sl*10)-1)*100; txt="Typical level "+(Math.abs(pct)<5?"roughly flat":(pct>0?"rising":"falling")+" by about "+Math.round(Math.abs(pct))+"% per decade")+"."; }
+    else { const d=sl*10; txt="Typical level "+(Math.abs(d)<1e-9?"flat":(d>0?"rising":"falling")+" by about "+nf(Math.abs(d))+" "+m.u+" per decade")+"."; }
+    if(!S.split || groups.length<=6) statsHtml.push('<div class="stat"><h3>'+esc(g.name)+'</h3><p>'+esc(txt)+' Based on yearly medians, '+ys[0]+'–'+ys[ys.length-1]+', '+g.rows.length.toLocaleString("en-GB")+' samples.</p></div>');
+  });
+  $("trendstats").innerHTML=statsHtml.join("") + (S.split && groups.length>6 ? '<p class="hint">Trend summaries are shown for up to 6 sites.</p>':'');
+  newPlot("tr-year",traces,baseLayout({title:titleCfg("Yearly median "+m.l),xaxis:ax({dtick:S.y1-S.y0>12?2:1}),yaxis:ax({type:m.log?"log":"linear",title:{text:label(p)}}),hovermode:"closest"}));
+  // exceedance or count
+  const all=f; const byY=new Map(); all.forEach(s=>{ if(!byY.has(s.y)) byY.set(s.y,[]); byY.get(s.y).push(val(s)); });
+  const ys=[...byY.keys()].sort((a,b)=>a-b);
+  if(m.thr){
+    const pct=ys.map(y=>100*byY.get(y).filter(v=>v>m.thr[1]).length/byY.get(y).length);
+    newPlot("tr-exc",[{type:"bar",x:ys,y:pct,customdata:ys.map(y=>byY.get(y).length),marker:{color:C.crit,cornerradius:3},hovertemplate:"%{x}: %{y:.0f}% of %{customdata} samples<extra></extra>",showlegend:false}],
+      baseLayout({title:titleCfg("Share of samples above "+m.thr[1].toLocaleString("en-GB")+" "+m.u),xaxis:ax({}),yaxis:ax({title:{text:"% of samples"},range:[0,100]}),showlegend:false,bargap:.25}));
+  } else {
+    newPlot("tr-exc",[{type:"bar",x:ys,y:ys.map(y=>byY.get(y).length),marker:{color:C.accent,cornerradius:3},hovertemplate:"%{x}: %{y} samples<extra></extra>",showlegend:false}],
+      baseLayout({title:titleCfg("Samples per year"),xaxis:ax({}),yaxis:ax({title:{text:"Samples"}}),showlegend:false,bargap:.25}));
+  }
+  const bx=[],by=[]; f.forEach(s=>{ bx.push(MONTHS[dayDate(s.d).getUTCMonth()]); by.push(plotVal(val(s))); });
+  newPlot("tr-month",[{type:"box",x:bx,y:by,marker:{color:C.accent,size:3},line:{color:C.accent,width:1.5},fillcolor:C.accent+"30",boxpoints:false,name:"",hoverinfo:"y"}],
+    baseLayout({title:titleCfg("Seasonal pattern by month"),xaxis:ax({categoryorder:"array",categoryarray:MONTHS}),yaxis:ax({type:m.log?"log":"linear",title:{text:label(p)}}),showlegend:false}));
+}
+
+/* ---------- drivers ---------- */
+const RAIN_BANDS=[["Dry (< 1 mm)",0,1],["1–5 mm",1,5],["5–15 mm",5,15],["15 mm +",15,1e9]];
+const SPILL_BANDS=[["No spills",0,0],["Up to 1 h",1e-9,1],["1–6 h",1,6],["6 h +",6,1e9]];
+function renderDrivers(){
+  const p=S.param, m=META[p]; const f=filtered();
+  $("dr-note").innerHTML = "Each sample is paired with the rainfall and nearby storm overflow spills "+esc(winLabel())+". Overflows counted are those "+esc(kmLabel())+" of the sample's site. Change the window and distance in the left panel.";
+  if(!f.length){ ["dr-rain","dr-spill","dr-rainband","dr-spillband"].forEach(id=>emptyPlot(id,"No samples of this measurement for the selected sites and years.")); $("drstats").innerHTML=""; return; }
+  const rows=f.map(s=>({s, v:val(s), r:rainWin(s.d,S.win), h:spillWin(s.s,s.d,S.win,S.km)}));
+  const rr=rows.filter(o=>o.r!=null), hh=rows.filter(o=>o.h!=null);
+  const rhoR=spearman(rr.map(o=>o.r),rr.map(o=>o.v)), rhoH=spearman(hh.map(o=>o.h),hh.map(o=>o.v));
+  $("drstats").innerHTML =
+    '<div class="stat"><h3>Rainfall</h3><p>'+esc(m.l)+' shows '+rhoWords(rhoR)+' with rainfall '+(rhoR!=null?'(Spearman ρ = '+rhoR.toFixed(2)+', ':'(')+rr.length.toLocaleString("en-GB")+' samples).</p></div>'+
+    '<div class="stat"><h3>Storm overflow spills</h3><p>'+(hh.length? esc(m.l)+' shows '+rhoWords(rhoH)+' with nearby spill hours '+(rhoH!=null?'(ρ = '+rhoH.toFixed(2)+', ':'(')+hh.length.toLocaleString("en-GB")+' samples since 2020).' : 'No samples in these years overlap the overflow data (January 2020 to June 2026).')+'</p></div>';
+  const metric = arr => m.thr ? (arr.length? 100*arr.filter(v=>v>m.thr[1]).length/arr.length : null) : quant(arr,.5);
+  const mName = m.thr ? "% of samples above "+m.thr[1].toLocaleString("en-GB") : "Median "+m.l;
+  const band=(list,key,bands)=>bands.map(([n,a,b])=>{ const vs=list.filter(o=> b===0 ? o[key]===0 : (o[key]>=a && o[key]<b)).map(o=>o.v); return {n, y:metric(vs), c:vs.length}; });
+  const rb=band(rr,"r",RAIN_BANDS), sb=band(hh,"h",SPILL_BANDS);
+  const barT=(b,col)=>[{type:"bar",x:b.map(o=>o.n),y:b.map(o=>o.y),text:b.map(o=>"n="+o.c),textposition:"outside",textfont:{color:C.muted,size:11},cliponaxis:false,marker:{color:col,cornerradius:3},hovertemplate:"%{x}: %{y:.3~f}<br>%{text}<extra></extra>",showlegend:false}];
+  const yb={title:{text:mName},rangemode:"tozero"}; if(m.thr) yb.range=[0,105];
+  newPlot("dr-rainband",barT(rb,C.rain),baseLayout({title:titleCfg("By rainfall "+(S.win?"in window":"on the day")),xaxis:ax({}),yaxis:ax(yb),showlegend:false,bargap:.35}));
+  if(hh.length) newPlot("dr-spillband",barT(sb,C.spill),baseLayout({title:titleCfg("By nearby spill hours in window"),xaxis:ax({}),yaxis:ax(yb),showlegend:false,bargap:.35}));
+  else emptyPlot("dr-spillband","Choose years from 2020 onward to compare against storm overflow spills.");
+  const sc=(list,key,col,xt)=>[{type:"scatter",mode:"markers",x:list.map(o=>o[key]),y:list.map(o=>plotVal(o.v)),customdata:list.map(o=>[SITES[o.s.s].name,fmtShort(o.s.d),nf(o.v)]),
+    marker:{color:col,size:7,opacity:.55,line:{color:C.surface,width:.5}},hovertemplate:"<b>%{customdata[0]}</b> %{customdata[1]}<br>"+esc(m.l)+": %{customdata[2]}<br>"+xt+": %{x:.1f}<extra></extra>",showlegend:false}];
+  const shapes = m.thr ? [{type:"line",xref:"paper",x0:0,x1:1,yref:"y",y0:m.thr[1],y1:m.thr[1],line:{color:C.crit,width:1,dash:"dash"}}] : [];
+  newPlot("dr-rain",sc(rr,"r",C.rain,"Rain mm"),baseLayout({title:titleCfg("Each sample against rainfall"),xaxis:ax({title:{text:"Rain in window (mm)"},rangemode:"tozero"}),yaxis:ax({type:m.log?"log":"linear",title:{text:label(p)}}),shapes,showlegend:false}));
+  if(hh.length) newPlot("dr-spill",sc(hh,"h",C.spill,"Spill hours"),baseLayout({title:titleCfg("Each sample against nearby spill hours"),xaxis:ax({title:{text:"Spill hours in window"},type:"linear",rangemode:"tozero"}),yaxis:ax({type:m.log?"log":"linear",title:{text:label(p)}}),shapes,showlegend:false}));
+  else emptyPlot("dr-spill","No samples overlap the overflow data for these years.");
+}
+
+/* ---------- events ---------- */
+const HF="Bristol Harbour Festival";
+const BUILTIN=[
+  ["2012-07-20","2012-07-22"],["2013-07-26","2013-07-28"],["2014-07-18","2014-07-20"],["2015-07-17","2015-07-19"],
+  ["2016-07-15","2016-07-17"],["2017-07-21","2017-07-23"],["2018-07-20","2018-07-22"],["2019-07-19","2019-07-21"],
+  ["2020-07-17","2020-07-19","cancelled","Cancelled (COVID-19). Nominal third weekend of July, kept as a comparison year."],
+  ["2021-07-16","2021-07-18","cancelled","Cancelled (COVID-19). Nominal third weekend of July, kept as a comparison year."],
+  ["2022-07-15","2022-07-17","held","Scaled-back format"],["2023-07-14","2023-07-16"],["2024-07-19","2024-07-21"],["2025-07-18","2025-07-20"],["2026-07-17","2026-07-19"]
+].map(([a,b,st,n])=>({series:HF,a:isoDay(a),b:isoDay(b),status:st||"held",note:n||"",custom:false}));
+let CUSTOM=[]; try{ CUSTOM=JSON.parse(localStorage.getItem("wq-events")||"[]").filter(e=>e&&e.series&&e.start); }catch(e){ CUSTOM=[]; }
+function saveCustom(){ try{ localStorage.setItem("wq-events",JSON.stringify(CUSTOM)); }catch(e){} }
+function EVENTS(){ return BUILTIN.concat(CUSTOM.map((e,i)=>({series:e.series,a:isoDay(e.start),b:isoDay(e.end||e.start),status:"held",note:"Added by you",custom:true,ci:i}))).sort((x,y)=>x.a-y.a); }
+function periods(e,W){ return {before:[e.a-W,e.a-1], during:[e.a,e.b+7], after:[e.b+8,e.b+7+W]}; }
+const PER_LABEL={before:"Before",during:"Festival week",after:"After"};
+function signTestP(k,n){ if(!n) return null; const c=(n,r)=>{let v=1;for(let i=1;i<=r;i++) v=v*(n-r+i)/i; return v;}; const lo=Math.min(k,n-k); let t=0; for(let i=0;i<=lo;i++) t+=c(n,i); return Math.min(1,2*t/Math.pow(2,n)); }
+function lerpHex(a,b,t){ const pa=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16)), pb=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16)); return "#"+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,"0")).join(""); }
+function renderEvents(){
+  const p=S.param, m=META[p], pi=PIDX[p], W=S.evW;
+  const all=EVENTS(); const names=[...new Set(all.map(e=>e.series))];
+  if(!names.includes(S.evSeries)) S.evSeries=names[0];
+  $("evseries").innerHTML=names.map(n=>'<option'+(n===S.evSeries?' selected':'')+'>'+esc(n)+'</option>').join("");
+  $("evnames").innerHTML=names.map(n=>'<option value="'+esc(n)+'">').join("");
+  $("evwin").value=String(W);
+  $("evcustom").innerHTML=CUSTOM.map((e,i)=>'<li><span>'+esc(e.series)+' · '+esc(e.start)+(e.end&&e.end!==e.start?' to '+esc(e.end):'')+'</span><button type="button" data-rm="'+i+'">Remove</button></li>').join("");
+  $("evcustom").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ CUSTOM.splice(+b.dataset.rm,1); saveCustom(); S.evSel=null; renderTab(); });
+  const evs=all.filter(e=>e.series===S.evSeries);
+  $("ev-note").innerHTML="Compares "+esc(m.l)+" at the selected sites in three windows around each event: <b>before</b> (the "+W+" days before it starts), <b>festival week</b> (the event days plus the 7 days after, because harbour sampling is roughly weekly and rarely falls on the weekend itself) and <b>after</b> (the next "+W+" days). Change the sites or measurement in the left panel.";
+  const siteOK=s=>S.sites.has(s.s)&&s[pi]!==undefined;
+  const near=new Set(); S.sites.forEach(i=>nearOvs(i,S.km).forEach(o=>near.add(o)));
+  const rows=evs.map(e=>{ const P=periods(e,W); const r={e,P};
+    ["before","during","after"].forEach(k=>{ const v=SAMPLES.filter(s=>s.d>=P[k][0]&&s.d<=P[k][1]&&siteOK(s)).map(s=>s[pi]); r[k]={v,med:quant(v,.5)}; });
+    r.rain=rainWin(e.b+7,e.b+7-e.a);
+    const ok=e.a>=CSO0&&e.b+7<=CSO1; let h=0; if(ok) near.forEach(o=>{ for(let d=e.a;d<=e.b+7;d++) h+=ovDays[o].get(d)||0; });
+    r.spill=ok?h/60:null;
+    return r; });
+  if(S.evSel!=null && !rows.some(r=>r.e.a===S.evSel)) S.evSel=null;
+  if(S.evSel==null && rows.length){ const withData=rows.filter(r=>r.during.v.length); S.evSel=(withData.length?withData[withData.length-1]:rows[rows.length-1]).e.a; }
+  const held=rows.filter(r=>r.e.status!=="cancelled");
+  const paired=held.filter(r=>r.before.v.length&&r.during.v.length);
+  const up=paired.filter(r=>r.during.med>r.before.med).length, down=paired.filter(r=>r.during.med<r.before.med).length;
+  const pv=signTestP(up,up+down);
+  const ratio=paired.map(r=> m.log ? Math.max(r.during.med,1)/Math.max(r.before.med,1) : r.during.med-r.before.med);
+  const typ=quant(ratio,.5);
+  const pool=(list,k)=>list.flatMap(r=>r[k].v);
+  const mb=quant(pool(held,"before"),.5), md=quant(pool(held,"during"),.5), ma=quant(pool(held,"after"),.5);
+  let verdict;
+  if(paired.length<3) verdict="Too few events have samples both before and during to compare. Try more sites or a wider window.";
+  else { const sig=pv!=null&&pv<.05; verdict="In "+up+" of "+(up+down)+" events the festival-week median was higher than in the "+W+" days before"+(down?", and lower in "+down:"")+". "+(sig?"A split this uneven is unlikely to be chance (sign test p = "+pv.toFixed(3)+").":"A split like this could easily be chance (sign test p = "+(pv==null?"–":pv.toFixed(2))+"), so there is no clear festival effect in this data."); }
+  const change = typ==null?"–" : m.log ? (typ>=1?"×"+nf(typ,1)+" higher":"×"+nf(1/typ,1)+" lower") : (typ>=0?"+":"")+nf(typ)+" "+m.u;
+  $("evstats").innerHTML='<div class="stat"><h3>Festival week against before</h3><p>'+esc(verdict)+'</p></div>'+
+    '<div class="stat"><h3>Typical change per event: '+esc(change)+'</h3><p>All '+held.length+' held events pooled: median before '+nf(mb)+', festival week '+nf(md)+', after '+nf(ma)+(m.u?' '+esc(m.u):'')+'. Rain and spills also vary week to week, so check them in the table.</p></div>';
+  const pill=v=>{ const st=status(p,v); return v==null?'<span style="color:var(--muted)">no samples</span>':nf(v)+(st?' <span class="pill '+st+'">'+STATUS_LABEL[st]+'</span>':''); };
+  const dates=e=>{ const y=dayDate(e.a).getUTCFullYear(); const f=d=>dayDate(d).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"}); return f(e.a)+(e.b>e.a?" – "+f(e.b):"")+" "+y; };
+  $("evtable").innerHTML='<thead><tr><th>Dates</th><th class="r">Before</th><th class="r">Festival week</th><th class="r">After</th><th class="r">Rain, festival week</th><th class="r">Spill hours</th></tr></thead><tbody>'+
+    rows.slice().reverse().map(r=>'<tr data-ev="'+r.e.a+'"'+(r.e.a===S.evSel?' class="sel"':'')+'><td><b>'+esc(dates(r.e))+'</b>'+(r.e.status==="cancelled"?'<span class="tag" title="'+esc(r.e.note)+'">Cancelled</span>':'')+(r.e.note&&r.e.status!=="cancelled"?'<span class="tag">'+esc(r.e.note)+'</span>':'')+'</td>'+
+      ["before","during","after"].map(k=>'<td class="r">'+pill(r[k].med)+' <span style="color:var(--muted);font-size:.75rem">('+r[k].v.length+')</span></td>').join("")+
+      '<td class="r">'+(r.rain==null?'–':nf(r.rain,1)+' mm')+'</td><td class="r">'+(r.spill==null?'<span style="color:var(--muted)">no data</span>':nf(r.spill,1))+'</td></tr>').join("")+'</tbody>';
+  $("evtable").querySelectorAll("tr[data-ev]").forEach(tr=>tr.onclick=()=>{ S.evSel=+tr.dataset.ev; renderEvents(); $("ev-zoomtitle").scrollIntoView({block:"start",behavior:"smooth"}); });
+  if(!S.sites.size||!rows.length){ emptyPlot("ev-align","Select one or more sites."); emptyPlot("ev-sum","Select one or more sites."); }
+  else {
+    const dark=getComputedStyle(document.documentElement).colorScheme==="dark";
+    const c0=dark?"#184f95":"#86b6ef", c1=dark?"#9ec5f4":"#0d366b";
+    const tr=[]; const maxSpan=Math.max(...rows.map(r=>r.e.b-r.e.a));
+    rows.forEach(r=>{ const e=r.e; const sm=SAMPLES.filter(s=>s.d>=e.a-W&&s.d<=e.b+7+W&&siteOK(s)); if(!sm.length) return;
+      const k=held.indexOf(r); const canc=e.status==="cancelled"; const col=canc?C.muted:lerpHex(c0,c1,held.length>1?k/(held.length-1):1);
+      tr.push({type:"scatter",mode:"markers",name:String(dayDate(e.a).getUTCFullYear())+(canc?" (cancelled)":""),x:sm.map(s=>s.d-e.a),y:sm.map(s=>plotVal(s[pi])),
+        customdata:sm.map(s=>[SITES[s.s].name,fmtShort(s.d),nf(s[pi])]),marker:{color:col,size:8,symbol:canc?"circle-open":"circle",line:{color:canc?col:C.surface,width:canc?1.5:1}},
+        hovertemplate:"<b>%{customdata[0]}</b> %{customdata[1]}<br>"+esc(m.l)+": %{customdata[2]}<br>Day %{x} from start<extra>%{fullData.name}</extra>"}); });
+    const shapes=[{type:"rect",xref:"x",x0:-.5,x1:maxSpan+.5,yref:"paper",y0:0,y1:1,fillcolor:C.accent,opacity:.2,line:{width:0},layer:"below"},
+                  {type:"rect",xref:"x",x0:maxSpan+.5,x1:maxSpan+7.5,yref:"paper",y0:0,y1:1,fillcolor:C.accent,opacity:.07,line:{width:0},layer:"below"}];
+    if(m.thr) shapes.push({type:"line",xref:"paper",x0:0,x1:1,yref:"y",y0:m.thr[1],y1:m.thr[1],line:{color:C.crit,width:1,dash:"dash"}});
+    if(tr.length) newPlot("ev-align",tr,baseLayout({title:titleCfg("Every event lined up by day"),margin:{l:62,r:16,t:48,b:44},xaxis:ax({title:{text:"Days from first day of event"},zeroline:false,range:[-W-1,maxSpan+8+W]}),yaxis:ax({type:m.log?"log":"linear",title:{text:label(p)}}),shapes,
+      annotations:[{xref:"x",x:maxSpan/2,yref:"paper",y:1,yanchor:"bottom",text:"Event",showarrow:false,font:{size:10,color:C.ink2}},{xref:"x",x:maxSpan+4,yref:"paper",y:1,yanchor:"bottom",text:"Week after",showarrow:false,font:{size:10,color:C.muted}}],legend:{orientation:"h",y:-0.22,yanchor:"top",x:0,font:{size:10}}}));
+    else emptyPlot("ev-align","No samples near these events for the selected sites.");
+    const canc=rows.filter(r=>r.e.status==="cancelled");
+    const ks=["before","during","after"];
+    const grp=(list,name,col,pat)=>({type:"bar",name,x:ks.map(k=>PER_LABEL[k]),y:ks.map(k=>quant(pool(list,k),.5)),text:ks.map(k=>"n="+pool(list,k).length),textposition:"outside",cliponaxis:false,textfont:{size:10,color:C.muted},
+      marker:{color:col,cornerradius:3,opacity:pat?.75:1},hovertemplate:"%{x}: median %{y:,.3~f}<br>%{text}<extra>"+esc(name)+"</extra>"});
+    const sum=[grp(held,held.length+" held events",C.accent,false)];
+    if(canc.length) sum.push(grp(canc,"Cancelled years (same weeks)",C.muted,true));
+    newPlot("ev-sum",sum,baseLayout({title:titleCfg("Median, all events combined"),barmode:"group",bargap:.3,bargroupgap:.08,xaxis:ax({}),yaxis:ax({title:{text:"Median "+label(p)},rangemode:"tozero"}),legend:{orientation:"h",y:-0.14,yanchor:"top",x:0,font:{size:11}}}));
+  }
+  const sel=rows.find(r=>r.e.a===S.evSel);
+  if(sel){ const e=sel.e; $("ev-zoomtitle").textContent=S.evSeries+", "+dates(e)+(e.status==="cancelled"?" (cancelled)":""); drawTimeline("ev-tl",e.a-W,e.b+7+W,{events:true}); }
+  else { $("ev-zoomtitle").textContent=""; emptyPlot("ev-tl","Pick an event in the table."); }
+}
+
+/* ---------- day view ---------- */
+function nearestSampleDay(d){ let lo=0,hi=sampleDays.length-1; while(lo<hi){const mid=(lo+hi)>>1; if(sampleDays[mid]<d) lo=mid+1; else hi=mid;} const c=[sampleDays[lo],sampleDays[Math.max(lo-1,0)]]; return c.sort((a,b)=>Math.abs(a-d)-Math.abs(b-d))[0]; }
+function goDay(d){ const nd=nearestSampleDay(d); S.day=nd; S.requested=d; $("daypick").value=iso(nd); setTab("day"); }
+function stepDay(k){ if(S.day==null) return; const i=sampleDays.indexOf(S.day)+k; if(i<0||i>=sampleDays.length) return; S.day=sampleDays[i]; S.requested=null; $("daypick").value=iso(S.day); renderTab(); renderMap(); }
+function renderDay(){
+  if(S.day==null){ const f=filtered(); S.day = f.length ? f[f.length-1].d : sampleDays[sampleDays.length-1]; $("daypick").value=iso(S.day); }
+  const d=S.day, p=S.param, m=META[p];
+  $("daytitle").textContent = fmtDay(d);
+  const i=sampleDays.indexOf(d); $("dayprev").disabled=i<=0; $("daynext").disabled=i>=sampleDays.length-1;
+  const rows=SAMPLES.filter(s=>s.d===d).sort((a,b)=>(S.sites.has(b.s)-S.sites.has(a.s))||a.s-b.s);
+  const rw=rainWin(d,S.win);
+  const inCso = d-S.win>=CSO0 && d<=CSO1;
+  const siteSet = new Set(rows.map(s=>s.s)); const near=new Set(); siteSet.forEach(si=>nearOvs(si,S.km).forEach(o=>near.add(o)));
+  const spilled=[]; if(inCso) near.forEach(o=>{ let mm=0; for(let k=0;k<=S.win;k++) mm+=ovDays[o].get(d-k)||0; if(mm>0) spilled.push([o,mm/60]); });
+  spilled.sort((a,b)=>b[1]-a[1]);
+  const pv=rows.map(s=>s[PIDX[p]]).filter(v=>v!==undefined);
+  $("daycards").innerHTML =
+    '<div class="stat"><h3>'+rows.length+' samples, '+siteSet.size+' sites</h3><p>'+(S.requested!=null && S.requested!==d ? 'Nearest sampling day to '+fmtShort(S.requested)+'. ' : '')+(pv.length? esc(m.l)+' ranged '+nf(Math.min(...pv))+' to '+nf(Math.max(...pv))+' '+esc(m.u)+'.' : 'No '+esc(m.l)+' readings on this day.')+'</p></div>'+
+    '<div class="stat"><h3>'+(rw==null?'Rain: no data':nf(rw,1)+' mm of rain')+'</h3><p>'+esc(winLabel().replace(/^over /,"Over ").replace(/^on /,"On "))+'. Same day: '+nf(rainOn(d),1)+' mm.</p></div>'+
+    '<div class="stat"><h3>'+(inCso? spilled.length+' overflow'+(spilled.length===1?'':'s')+' spilled':'No overflow data')+'</h3><p>'+(inCso? (spilled.length? nf(spilled.reduce((a,b)=>a+b[1],0),1)+' spill hours '+esc(kmLabel())+' of the sites sampled, '+esc(winLabel())+'.' : 'None '+esc(kmLabel())+' of the sites sampled, '+esc(winLabel())+'.') : 'Spill records cover January 2020 to June 2026.')+'</p>'+
+      (spilled.length? '<ul class="ovlist">'+spilled.slice(0,40).map(([o,h])=>'<li><span>'+esc(OVS[o].name)+'</span><span class="num">'+nf(h,1)+' h</span></li>').join("")+'</ul>':'')+'</div>';
+  const xs=[],ys=[],cs=[]; for(let k=-10;k<=4;k++){ xs.push(iso(d+k)); ys.push(rainOn(d+k)); cs.push(k===0?C.accent:(k<0&&k>=-S.win?C.rain:C.rain+"66")); }
+  const tr=[{type:"bar",x:xs,y:ys,marker:{color:cs,cornerradius:3},hovertemplate:"%{x|%a %d %b}: %{y:.1f} mm<extra></extra>",showlegend:false}];
+  if(inCso || (d+4>=CSO0 && d-10<=CSO1)){
+    const hs=[]; for(let k=-10;k<=4;k++){ const dd=d+k; if(dd<CSO0||dd>CSO1){hs.push(null);continue;} let mm=0; near.forEach(o=>mm+=ovDays[o].get(dd)||0); hs.push(mm/60); }
+    tr.push({type:"bar",x:xs,y:hs,marker:{color:C.spill,cornerradius:3},xaxis:"x",yaxis:"y2",hovertemplate:"%{x|%a %d %b}: %{y:.1f} spill hours<extra></extra>",showlegend:false});
+  }
+  newPlot("dayrain",tr,baseLayout({title:titleCfg("Rainfall and nearby spills, 10 days before to 4 days after"),margin:{l:62,r:16,t:36,b:36},
+    xaxis:ax({type:"date",tickformat:"%d %b",anchor:"y2"}),yaxis:ax({domain:[.55,1],title:{text:"Rain mm"},rangemode:"tozero"}),yaxis2:ax({domain:[0,.42],title:{text:"Spill h"},rangemode:"tozero"}),showlegend:false,bargap:.2,
+    shapes:[{type:"rect",xref:"x",x0:iso(d-S.win)+" 00:00",x1:iso(d)+" 23:59",yref:"paper",y0:0,y1:1,fillcolor:C.accent,opacity:.08,line:{width:0},layer:"below"}]}));
+  const cols = PORDER.filter(pp=>rows.some(s=>s[PIDX[pp]]!==undefined));
+  $("daytable").innerHTML = '<thead><tr><th>Site</th><th>River</th><th>Time</th><th class="r">'+esc(m.l)+'</th><th>Other readings</th></tr></thead><tbody>'+
+    rows.map(s=>{ const v=s[PIDX[p]]; const stt=status(p,v);
+      return '<tr data-site="'+s.s+'"><td>'+(S.sites.has(s.s)?'<b>'+esc(SITES[s.s].name)+'</b>':esc(SITES[s.s].name))+'</td><td>'+esc(SITES[s.s].river)+'</td><td class="num">'+esc(s.t)+'</td><td class="r">'+(v===undefined?'–':nf(v)+(stt?' <span class="pill '+stt+'">'+STATUS_LABEL[stt]+'</span>':''))+'</td><td><div class="readings">'+
+        cols.filter(pp=>pp!==p && s[PIDX[pp]]!==undefined).map(pp=>'<span>'+esc(META[pp].l)+' <b class="num">'+nf(s[PIDX[pp]])+'</b></span>').join("")+'</div></td></tr>'; }).join("")+'</tbody>';
+  $("daytable").querySelectorAll("tr[data-site]").forEach(tr=>tr.onclick=()=>{ const si=+tr.dataset.site; const s=SITES[si]; map.setView([s.lat,s.lon],15); });
+}
+
+/* ---------- table ---------- */
+function renderTable(){
+  const p=S.param, m=META[p]; const q=S.tq;
+  let f=filtered().slice().sort((a,b)=>b.d-a.d||a.s-b.s);
+  if(q) f=f.filter(s=>(SITES[s.s].name+" "+SITES[s.s].river+" "+SITES[s.s].id+" "+iso(s.d)+" "+fmtShort(s.d)).toLowerCase().includes(q));
+  $("tcount").textContent = f.length.toLocaleString("en-GB")+" samples";
+  const shown=f.slice(0,S.tlimit);
+  $("stable").innerHTML='<thead><tr><th>Date</th><th>Site</th><th>River</th><th class="r">'+esc(m.l)+(m.u?' ('+esc(m.u)+')':'')+'</th><th class="r">Rain (mm)</th><th class="r">Spills (h)</th></tr></thead><tbody>'+
+    shown.map(s=>{ const v=val(s); const stt=status(p,v); const h=spillWin(s.s,s.d,S.win,S.km);
+      return '<tr data-day="'+s.d+'"><td class="num">'+iso(s.d)+'</td><td>'+esc(SITES[s.s].name)+'</td><td>'+esc(SITES[s.s].river)+'</td><td class="r">'+nf(v)+(stt?' <span class="pill '+stt+'">'+STATUS_LABEL[stt]+'</span>':'')+'</td><td class="r">'+nf(rainWin(s.d,S.win),1)+'</td><td class="r">'+(h==null?'<span style="color:var(--muted)">no data</span>':nf(h,1))+'</td></tr>'; }).join("")+
+    (shown.length?'':'<tr><td colspan="6" class="empty">No samples match.</td></tr>')+'</tbody>';
+  $("tmore").hidden = f.length<=S.tlimit;
+  $("stable").querySelectorAll("tr[data-day]").forEach(tr=>tr.onclick=()=>goDay(+tr.dataset.day));
+}
+
+/* ---------- orchestration ---------- */
+function setTab(t){
+  S.tab=t; try{localStorage.setItem("wq-tab",t);}catch(e){}
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  TABS.forEach(k=>$("p-"+k).hidden = k!==t);
+  renderTab(); renderMap();
+}
+function renderTab(){
+  try{
+    ({timeline:renderTimeline,trends:renderTrends,drivers:renderDrivers,events:renderEvents,levels:renderLevels,day:renderDay,table:renderTable})[S.tab]();
+    document.querySelectorAll("#p-"+S.tab+" .js-plotly-plot").forEach(el=>Plotly.Plots.resize(el));
+  }catch(e){ console.error(e); }
+}
+function update(){ syncChips(); renderSiteList(); renderKpis(); renderMap(); renderTab(); }
+
+buildControls(); initMap();
+if(!TABS.includes(S.tab)) S.tab="timeline";
+document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
+TABS.forEach(k=>$("p-"+k).hidden = k!==S.tab);
+update();
+const rethem=()=>{ readTokens(); update(); };
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",rethem);
+new MutationObserver(rethem).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>
