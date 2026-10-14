@@ -1205,7 +1205,9 @@ function syncChips(){
   document.querySelectorAll("[data-km]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.km)===String(S.km)));
   document.querySelectorAll("[data-yr]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.yr===S.y0+"-"+S.y1));
 }
-function visibleSites(){ const q=S.siteq; return SITES.filter(s=>!q || (s.name+" "+s.river+" "+s.id).toLowerCase().includes(q)).map(s=>s.i); }
+// The published page covers Floating Harbour sites only.
+const siteAllowed = s => !FOCUS || s.river==="Floating Harbour";
+function visibleSites(){ const q=S.siteq; return SITES.filter(s=>siteAllowed(s)).filter(s=>!q || (s.name+" "+s.river+" "+s.id).toLowerCase().includes(q)).map(s=>s.i); }
 function renderSiteList(){
   const pi=PIDX[S.param]; const counts=new Array(SITES.length).fill(0);
   for(const s of SAMPLES) if(s[pi]!==undefined && s.y>=S.y0 && s.y<=S.y1) counts[s.s]++;
@@ -1251,7 +1253,7 @@ function initMap(){
   map.on("overlayadd overlayremove",()=>renderMap());
   siteLayer = L.layerGroup().addTo(map);
   L.control.layers(null,{"Storm overflows":ovLayer,"Search radius":radLayer},{collapsed:true,position:"topright"}).addTo(map);
-  const pts = SITES.map(s=>[s.lat,s.lon]); map.fitBounds(pts,{padding:[20,20],animate:false});
+  const pts = SITES.filter(siteAllowed).map(s=>[s.lat,s.lon]); map.fitBounds(pts,{padding:[20,20],animate:false});
   map.on("click focus",()=>map.scrollWheelZoom.enable()); map.on("mouseout blur",()=>map.scrollWheelZoom.disable());
 }
 const SEQ = ["#cde2fb","#86b6ef","#3987e5","#1c5cab","#0d366b"];
@@ -1292,6 +1294,7 @@ function renderMap(){
   });
   // sites
   SITES.forEach((s,i)=>{
+    if(!siteAllowed(s)) return;
     const sel=S.sites.has(i); const v=meds[i];
     const mk=L.circleMarker([s.lat,s.lon],{radius:sel?9:7,color:sel?C.ink:C.surface,weight:sel?3:1.5,fillColor:colorOf(v),fillOpacity:.95});
     mk.bindTooltip('<b>'+esc(s.name)+'</b> · '+esc(s.river)+'<br>'+(v==null?'No samples':(dayMode?'':'Median ')+nf(v)+' '+esc(m.u)+' <span style="color:'+C.muted+'">('+per[i].length+' sample'+(per[i].length===1?'':'s')+')</span>'));
@@ -1660,7 +1663,9 @@ function update(){ syncChips(); renderSiteList(); renderKpis(); renderMap(); ren
 const FOCUS = TABS.includes(window.WQ_FOCUS) ? window.WQ_FOCUS : null;
 function applyFocus(){
   S.tab=FOCUS;
+  S.sites=new Set([...S.sites].filter(i=>siteAllowed(SITES[i])));
   $("map").closest(".card").style.order = 2;
+  $("kpis").hidden=true;
   [document.querySelector(".tabs"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
     .forEach(el=>{ if(el) el.hidden=true; });
 }
