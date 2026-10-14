@@ -9,9 +9,9 @@ Open `index.html` in a browser. It needs `data.js` in the same folder and an int
 ## What it does
 
 - **Map**: sampling sites coloured by median level, plus 244 storm overflows sized by spill hours. Click to select sites.
-- **Timeline**: samples, daily rainfall and nearby spill hours on one date axis. Detailed values or a simple Low / Elevated / High view, plus overlays of up to 5 previous years.
+- **Timeline**: samples, daily rainfall and nearby spill hours on one date axis. Detailed values or a bathing water bands view, plus overlays of up to 5 previous years.
 - **Trends**: yearly medians, trend per decade, seasonal pattern by month.
-- **Levels by year**: share of Low / Elevated / High samples per year, full year or summer season (1 Apr – 31 Oct), with an option to leave out samples taken after a nearby spill.
+- **Levels by year**: share of Excellent / Good / Sufficient / Poor samples per year, for the full year, summer only (Apr – Sep) or winter only (Oct – Mar), with an option to leave out samples taken after a nearby spill.
 - **Rain & spills**: how each measurement relates to rain and spills in a chosen window before sampling.
 - **Events**: Bristol Harbour Festival dates (2012–2026) compared before / during / after, with your own events addable in the browser.
 - **Day view** and **Samples**: search by date, site or river.
@@ -25,7 +25,7 @@ Open `index.html` in a browser. It needs `data.js` in the same folder and an int
 | Storm overflow spills | Wessex Water Event Duration Monitoring via the [Stream National Storm Overflow Hub](https://www.streamwaterdata.co.uk/pages/storm-overflows-data) | Jan 2020 – Jun 2026 |
 | Waterways | © OpenStreetMap contributors | – |
 
-Bacteria thresholds (E. coli 500 / 1,000 cfu/100 ml; enterococci 200 / 400) are indicative single-sample guides based on inland bathing water standards.
+Bacteria bands follow the Bathing Water Regulations 2013 Excellent, Sufficient and Good limits (inland or coastal/transitional, switchable), as summarised by [Surfers Against Sewage](https://datahq.sas.org.uk/wp-content/uploads/2025/07/Bathing-Water-Classifications-explained.pdf). Official classifications use percentiles over four seasons, so single-sample bands are a guide.
 
 ## Rebuilding the data
 
