@@ -1,5 +1,7 @@
 # Bristol Water Quality Explorer
 
+**Live (beta):** [Bristol Harbour Water Quality](https://timtrew.github.io/bristol-harbour-water-quality/), the Levels by year page for Floating Harbour sites, built from this repo by `build/assemble.py` into the separate [bristol-harbour-water-quality](https://github.com/timtrew/bristol-harbour-water-quality) repo.
+
 An interactive app for exploring surface water quality samples from Bristol's Floating Harbour and rivers (1994–2026), set against daily rainfall and Wessex Water storm overflow (CSO) spills.
 
 Open `index.html` in a browser. It needs `data.js` in the same folder and an internet connection for the chart/map libraries and street map tiles.
