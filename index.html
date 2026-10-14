@@ -923,7 +923,7 @@ footer a{color:var(--accent)}
         <p class="callout" id="lv-note"></p>
         <div class="row" style="justify-content:space-between;align-items:center;gap:8px 14px;margin-top:6px">
           <h3 id="lv-title" style="flex:1 1 240px;font-size:1.1rem"></h3>
-          <div class="seg" role="group" aria-label="Season" style="flex:none"><button type="button" class="seg-b" data-lvper="year">Full year</button><button type="button" class="seg-b" data-lvper="summer">Summer season (1 Apr – 31 Oct)</button></div>
+          <div class="seg" role="group" aria-label="Season" style="flex:none"><button type="button" class="seg-b" data-lvper="year">Full year</button><button type="button" class="seg-b" data-lvper="summer">Summer only (Apr – Sep)</button><button type="button" class="seg-b" data-lvper="winter">Winter only (Oct – Mar)</button></div>
           <div class="seg" role="group" aria-label="Units" style="flex:none"><button type="button" class="seg-b" data-lvunit="pct">% of samples</button><button type="button" class="seg-b" data-lvunit="n">Number of samples</button></div>
         </div>
         <div class="nospill" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:.9rem">
@@ -1404,45 +1404,64 @@ function drawTimeline(el,d0,d1,opts){
 
 /* ---------- trends ---------- */
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const inSummer = d => { const mo=dayDate(d).getUTCMonth(); return mo>=3 && mo<=9; };
+// Seasons: summer is Apr–Sep of a year; winter runs Oct of one year to Mar of the next and is keyed by the year it starts.
+const SEASONS = {
+  year:   {label:"Full year",               title:"full year"},
+  summer: {label:"Summer only (Apr – Sep)", title:"summer only (Apr – Sep)"},
+  winter: {label:"Winter only (Oct – Mar)", title:"winter only (Oct – Mar)"}
+};
+function seasonKeys(d){ const t=dayDate(d), y=t.getUTCFullYear(), mo=t.getUTCMonth();
+  return {year:y, summer:(mo>=3&&mo<=8)?y:null, winter:mo>=9?y:(mo<=2?y-1:null)}; }
+const winterLabel = k => k+"–"+String(k+1).slice(2);
 function renderLevels(){
-  const p=S.param, m=META[p];
+  const p=S.param, m=META[p], pi=PIDX[p];
+  if(!(S.lvPer in SEASONS)) S.lvPer="year";
   document.querySelectorAll("[data-lvper]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvper===S.lvPer)));
   document.querySelectorAll("[data-lvunit]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvunit===S.lvUnit)));
   if(!m.thr){ $("lv-title").textContent=""; $("lv-note").textContent="Levels are available for E. coli and intestinal enterococci. Choose one of those under Measurement."; emptyPlot("tr-levels","Choose E. coli or intestinal enterococci to see Low, Elevated and High counts."); $("lvtable").innerHTML=""; return; }
-  const f=filtered();
   const years=[]; for(let y=S.y0;y<=S.y1;y++) years.push(y);
   const blank=()=>({good:0,warn:0,crit:0,n:0,rm:0,unk:0});
-  const W={}, SM={}; years.forEach(y=>{W[y]=blank(); SM[y]=blank();});
+  const B={year:{},summer:{},winter:{}}; years.forEach(y=>{ B.year[y]=blank(); B.summer[y]=blank(); B.winter[y]=blank(); });
   const NS=S.lvNoSpill;
-  f.forEach(s=>{ const buckets=[W[s.y]].concat(inSummer(s.d)?[SM[s.y]]:[]);
+  SAMPLES.forEach(s=>{
+    if(s[pi]===undefined || !S.sites.has(s.s)) return;
+    const k=seasonKeys(s.d); const buckets=["year","summer","winter"].map(z=>B[z][k[z]]).filter(Boolean);
+    if(!buckets.length) return;
     if(NS){ const h=spillWin(s.s,s.d,S.lvDays,S.lvKm); if(h==null){ buckets.forEach(o=>o.unk++); return; } if(h>0){ buckets.forEach(o=>o.rm++); return; } }
-    const st=status(p,s[PIDX[p]]); buckets.forEach(o=>{ o[st]++; o.n++; }); });
+    const st=status(p,s[pi]); buckets.forEach(o=>{ o[st]++; o.n++; }); });
   const lastDay=SAMPLES.reduce((a,s)=>Math.max(a,s.d),0), lastY=dayDate(lastDay).getUTCFullYear();
-  const T=m.thr.map(t=>t.toLocaleString("en-GB"));
+  const T=m.thr.map(fmtT);
+  const per=S.lvPer;
   $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into <b>Low</b> (under "+T[0]+"), <b>Elevated</b> ("+T[0]+" to under "+T[1]+") and <b>High</b> ("+T[1]+" or more "+esc(m.u)+") using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. "+
-    (S.lvPer==="summer"?"Only samples taken between 1 April and 31 October are counted. ":"")+
-    "Bars and table show the share of each year's samples, so years with more or fewer samples compare fairly. Sample counts are in brackets."+(S.y1>=lastY?" "+lastY+" runs to "+fmtShort(lastDay)+" only.":"");
+    (per==="summer"?"Only samples taken from April to September are counted. ":per==="winter"?"Only samples taken from October to March are counted. Each winter runs from October to the following March, so 2024–25 means October 2024 to March 2025. ":"")+
+    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. Data runs to "+fmtShort(lastDay)+".";
   $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
-  if(NS){ const src0=S.lvPer==="summer"?SM:W; const tot=years.reduce((a,y)=>{a.rm+=src0[y].rm;a.unk+=src0[y].unk;a.n+=src0[y].n;return a;},{rm:0,unk:0,n:0});
+  const src=B[per];
+  if(NS){ const tot=years.reduce((a,y)=>{a.rm+=src[y].rm;a.unk+=src[y].unk;a.n+=src[y].n;return a;},{rm:0,unk:0,n:0});
     $("lv-note").innerHTML+=' <br><b>Spill filter on:</b> left out '+tot.rm+' sample'+(tot.rm===1?'':'s')+' taken when an overflow within '+S.lvKm+' km of the site spilled on the sampling day or the '+S.lvDays+' days before'+(tot.unk?', and '+tot.unk+' with no spill records to check (spill data covers January 2020 to June 2026)':'')+'. '+tot.n+' samples remain.'; }
-  const src=S.lvPer==="summer"?SM:W; const pct=S.lvUnit==="pct";
+  const pct=S.lvUnit==="pct";
   const ys=years.filter(y=>src[y].n>0);
+  const xl=y=> per==="winter"?winterLabel(y):String(y);
   const LV=[["good","Low",C.good],["warn","Elevated",C.warn],["crit","High",C.crit]];
-  $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+(S.lvPer==="summer"?"summer season (1 Apr – 31 Oct)":"whole year")+(NS?", no recent spills":"");
+  $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+SEASONS[per].title+(NS?", no recent spills":"");
   if(!ys.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites, years and season.");
-  else newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:ys.map(String),y:ys.map(y=>pct?100*src[y][k]/src[y].n:src[y][k]),
+  else newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:ys.map(xl),y:ys.map(y=>pct?100*src[y][k]/src[y].n:src[y][k]),
       customdata:ys.map(y=>[src[y][k],src[y].n,Math.round(100*src[y][k]/src[y].n)]),marker:{color:col,line:{color:C.surface,width:1}},
       hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} of %{customdata[1]} samples (%{customdata[2]}%)<extra></extra>"})),
     baseLayout({margin:{l:62,r:16,t:14,b:44},barmode:"stack",bargap:.25,
       xaxis:ax({type:"category"}),yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),legend:{orientation:"h",y:-0.12,yanchor:"top",x:0,traceorder:"normal"}}));
   const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
-  const cells=(o,first)=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–"; return ["good","warn","crit"].map((k,i)=>'<td class="r"'+(first&&i===0?' style="border-left:2px solid var(--line)"':'')+'>'+(o.n?'<b>'+pc(k)+'</b> <span style="color:var(--muted);font-size:.75rem">('+o[k]+')</span>':'–')+'</td>').join("")+'<td class="r" style="color:var(--ink-2)">'+o.n+(NS&&(o.rm||o.unk)?' <span style="color:var(--muted);font-size:.75rem" title="'+o.rm+' after spills, '+o.unk+' with no spill data">of '+(o.n+o.rm+o.unk)+'</span>':'')+'</td>'; };
+  const BL='border-left:2px solid var(--line)';
+  const cells=o=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–";
+    return ["good","warn","crit"].map((k,i)=>'<td class="r"'+(i===0?' style="'+BL+'"':'')+'>'+(o.n?'<b>'+pc(k)+'</b> <span style="color:var(--muted);font-size:.75rem">('+o[k]+')</span>':'–')+'</td>').join("")+
+      '<td class="r" style="color:var(--ink-2)">'+(o.n||o.rm||o.unk?o.n:'–')+(NS&&(o.rm||o.unk)?' <span style="color:var(--muted);font-size:.75rem" title="'+o.rm+' after spills, '+o.unk+' with no spill data">of '+(o.n+o.rm+o.unk)+'</span>':'')+'</td>'; };
   const sum=o=>years.reduce((a,y)=>{ ["good","warn","crit","n","rm","unk"].forEach(k=>a[k]+=o[y][k]); return a; },blank());
-  $("lvtable").innerHTML='<thead><tr><th></th><th colspan="4" style="text-align:center;border-left:2px solid var(--line)">Whole year</th><th colspan="4" style="text-align:center;border-left:2px solid var(--line)">Summer season (1 Apr – 31 Oct)</th></tr>'+
-    '<tr><th>Year</th>'+[0,1].map(()=>'<th class="r" style="border-left:2px solid var(--line)">'+dot(C.good)+'Low</th><th class="r">'+dot(C.warn)+'Elevated</th><th class="r">'+dot(C.crit)+'High</th><th class="r">Samples</th>').join("")+'</tr></thead><tbody>'+
-    years.slice().reverse().map(y=>'<tr><td class="num"><b>'+y+'</b>'+(y===lastY?' <span class="tag">to '+esc(fmtShort(lastDay).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+cells(W[y],true)+cells(SM[y],true)+'</tr>').join("")+
-    '<tr style="background:var(--surface-2)"><td><b>All years</b></td>'+cells(sum(W),true)+cells(sum(SM),true)+'</tr></tbody>';
+  const order=[per].concat(["year","summer","winter"].filter(z=>z!==per));
+  const head=z=>'<th colspan="4" style="text-align:center;'+BL+(z===per?';color:var(--ink)':'')+'">'+SEASONS[z].label+(z==="winter"?'<br><span style="font-weight:400;text-transform:none;letter-spacing:0">row 2024 = Oct 2024 – Mar 2025</span>':'')+'</th>';
+  $("lvtable").innerHTML='<thead><tr><th></th>'+order.map(head).join("")+'</tr>'+
+    '<tr><th>Year</th>'+order.map(()=>'<th class="r" style="'+BL+'">'+dot(C.good)+'Low</th><th class="r">'+dot(C.warn)+'Elevated</th><th class="r">'+dot(C.crit)+'High</th><th class="r">Samples</th>').join("")+'</tr></thead><tbody>'+
+    years.slice().reverse().map(y=>'<tr><td class="num"><b>'+y+'</b>'+(y===lastY?' <span class="tag">to '+esc(fmtShort(lastDay).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+order.map(z=>cells(B[z][y])).join("")+'</tr>').join("")+
+    '<tr style="background:var(--surface-2)"><td><b>All years</b></td>'+order.map(z=>cells(sum(B[z]))).join("")+'</tr></tbody>';
 }
 function renderTrends(){
   const p=S.param, m=META[p]; const f=filtered();
