@@ -213,6 +213,7 @@ footer a{color:var(--accent)}
       </div>
       <div class="sitelist" id="sitelist"></div>
       <p class="hint">Click a site on the map to select it alone. Ctrl or Cmd-click to add it.</p>
+      <button type="button" class="btn ghost" id="moresites" hidden aria-expanded="false"></button>
     </div>
     <div class="field">
       <span class="lab">Rain and spill window</span>
@@ -559,7 +560,10 @@ function syncChips(){
 }
 // The published page covers Floating Harbour sites only.
 const siteAllowed = s => !FOCUS || s.river==="Floating Harbour";
-function visibleSites(){ const q=S.siteq; return SITES.filter(s=>siteAllowed(s)).filter(s=>!q || (s.name+" "+s.river+" "+s.id).toLowerCase().includes(q)).map(s=>s.i); }
+// On the published page the list starts collapsed to the main site plus whatever is selected.
+const MAIN_SITE = "d1";
+const collapsed = () => FOCUS && !S.allSites && !S.siteq;
+function visibleSites(){ const q=S.siteq; return SITES.filter(s=>siteAllowed(s)).filter(s=>!collapsed() || s.id===MAIN_SITE || S.sites.has(s.i)).filter(s=>!q || (s.name+" "+s.river+" "+s.id).toLowerCase().includes(q)).map(s=>s.i); }
 function renderSiteList(){
   const pi=PIDX[S.param]; const counts=new Array(SITES.length).fill(0);
   for(const s of SAMPLES) if(s[pi]!==undefined && s.y>=S.y0 && s.y<=S.y1) counts[s.s]++;
@@ -573,6 +577,10 @@ function renderSiteList(){
         return '<label class="site"><input type="checkbox" data-site="'+s.i+'"'+(on?" checked":"")+'><span class="sw" style="background:'+(on?st.color:"transparent")+'"></span>'+esc(s.name)+' <span class="id">'+esc(s.id)+'</span><span class="n num" title="Samples of this measurement in the chosen years">'+counts[s.i]+'</span></label>'; }).join("")+'</div>';
   }).join("") : '<div class="empty" style="padding:16px">No sites match.</div>';
   $("sitelist").querySelectorAll("[data-site]").forEach(c=>c.onchange=()=>{ const i=+c.dataset.site; c.checked?S.sites.add(i):S.sites.delete(i); update(); });
+  if(FOCUS){ const hiddenN=SITES.filter(siteAllowed).length-vis.size, btn=$("moresites");
+    btn.hidden=!!S.siteq || (!S.allSites && hiddenN===0);
+    btn.textContent=S.allSites?"Hide other sites":"Show other sites ("+hiddenN+")";
+    btn.setAttribute("aria-expanded",String(!!S.allSites)); }
   $("sitelist").querySelectorAll("[data-grp]").forEach(c=>c.onchange=()=>{ SITES.filter(s=>s.river===c.dataset.grp && vis.has(s.i)).forEach(s=> c.checked?S.sites.add(s.i):S.sites.delete(s.i)); update(); });
 }
 
@@ -1034,7 +1042,8 @@ function update(){ syncChips(); renderSiteList(); renderKpis(); renderMap(); ren
 const FOCUS = TABS.includes(window.WQ_FOCUS) ? window.WQ_FOCUS : null;
 function applyFocus(){
   S.tab=FOCUS;
-  S.sites=new Set([...S.sites].filter(i=>siteAllowed(SITES[i])));
+  S.sites=new Set(SITES.filter(s=>s.id===MAIN_SITE).map(s=>s.i));
+  $("moresites").onclick=()=>{ S.allSites=!S.allSites; renderSiteList(); };
   $("map").closest(".card").style.order = 2;
   $("kpis").hidden=true;
   [document.querySelector(".tabs"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
