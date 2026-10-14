@@ -155,7 +155,10 @@ tbody tr:hover{background:var(--accent-soft)}
 tr.sel{background:var(--accent-soft)}
 .tag{font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px}
 footer{margin-top:22px;color:var(--muted);font-size:.8rem;max-width:100ch}
-footer p{margin:6px 0}
+footer p{margin:6px 0 10px}
+footer details{border-top:1px solid var(--line);padding:8px 0}
+footer summary{cursor:pointer;font-weight:600;color:var(--ink-2)}
+footer summary:hover{color:var(--accent)}
 footer a{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){.chip,.tab,.btn{transition:none}}
 </style>
@@ -335,8 +338,8 @@ footer a{color:var(--accent)}
 </div>
 
 <footer>
-  <p><b>Sources.</b> Samples: your file <i>Surface_Water_Quality.csv</i> (43 sites, 1994 to 2026). Rainfall: daily totals for central Bristol from the Open-Meteo historical weather archive (ERA5 reanalysis, a modelled grid value, not a rain gauge). Storm overflow spills: Wessex Water Event Duration Monitoring, published through the Stream National Storm Overflow Hub, for 244 overflows in and around Bristol, January 2020 to June 2026. Waterways and base map: &copy; OpenStreetMap contributors.</p>
-  <p><b>Reading the charts.</b> Green, amber and red use the Bathing Water Regulations 2013 Excellent and Good limits, as summarised by <a href="https://datahq.sas.org.uk/wp-content/uploads/2025/07/Bathing-Water-Classifications-explained.pdf">Surfers Against Sewage</a>. Inland: E. coli under 500 / under 1,000 cfu/100 ml, enterococci under 200 / under 400. Coastal and transitional: E. coli under 250 / under 500, enterococci under 100 / under 200. Official classifications use 95th and 90th percentiles over four seasons, so these single-sample colours are a guide, not a classification. A zero bacteria count is plotted at 1 on log scales. Distance to an overflow ignores whether it is upstream or downstream of a site. Some readings in the source file look like entry errors (for example a temperature of 136); they are shown as recorded.</p>
+  <details><summary>Sources</summary><p>Samples: your file <i>Surface_Water_Quality.csv</i> (43 sites, 1994 to 2026). Rainfall: daily totals for central Bristol from the Open-Meteo historical weather archive (ERA5 reanalysis, a modelled grid value, not a rain gauge). Storm overflow spills: Wessex Water Event Duration Monitoring, published through the Stream National Storm Overflow Hub, for 244 overflows in and around Bristol, January 2020 to June 2026. Waterways and base map: &copy; OpenStreetMap contributors.</p></details>
+  <details><summary>Reading the charts</summary><p>Green, amber and red use the Bathing Water Regulations 2013 Excellent and Good limits, as summarised by <a href="https://datahq.sas.org.uk/wp-content/uploads/2025/07/Bathing-Water-Classifications-explained.pdf">Surfers Against Sewage</a>. Inland: E. coli under 500 / under 1,000 cfu/100 ml, enterococci under 200 / under 400. Coastal and transitional: E. coli under 250 / under 500, enterococci under 100 / under 200. Official classifications use 95th and 90th percentiles over four seasons, so these single-sample colours are a guide, not a classification. A zero bacteria count is plotted at 1 on log scales. Distance to an overflow ignores whether it is upstream or downstream of a site. Some readings in the source file look like entry errors (for example a temperature of 136); they are shown as recorded.</p></details>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
