@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bristol Water Quality Explorer</title>
+<title>Bristol Water Quality</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
 <style>
 /* required styles */
 
@@ -681,8 +681,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --good:#0ca30c; --warn:#e3a008; --crit:#d03b3b; --nodata:#b7c3c5;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
   --tile-filter:none;
-  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-display:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -704,14 +704,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--ink)}
-body{font-family:var(--f-body);font-size:15px;line-height:1.45;margin:0;padding-inline:16px;padding-block:0 32px}
+body{font-family:var(--f-body);font-size:14px;line-height:1.45;margin:0;padding-inline:16px;padding-block:0 32px}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:.01em}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
 
 header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-block:18px 14px;border-bottom:1px solid var(--line);margin-bottom:16px}
-header.top h1{font-size:1.9rem;font-weight:700;line-height:1.05}
+header.top h1{font-size:1.7rem;font-weight:700;line-height:1.1;letter-spacing:-.01em}
 header.top h1 span{color:var(--accent)}
 header.top p{margin:4px 0 0;color:var(--ink-2);max-width:62ch}
 .kpis{display:flex;flex-wrap:wrap;gap:6px 22px}
@@ -780,7 +780,7 @@ main{display:flex;flex-direction:column;gap:16px;min-width:0}
 .mapnote{font-size:.78rem;color:var(--muted);padding:0 14px}
 
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;overflow-x:auto}
-.tab{border:0;background:none;padding:12px 12px 10px;cursor:pointer;color:var(--ink-2);font-family:var(--f-display);font-size:1.05rem;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tab{border:0;background:none;padding:12px 12px 10px;cursor:pointer;color:var(--ink-2);font-family:var(--f-display);font-size:.92rem;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .panel{padding:12px 14px 16px}
 .plot{width:100%;min-height:300px}
@@ -825,8 +825,7 @@ footer a{color:var(--accent)}
 <body>
 <header class="top">
   <div>
-    <h1>Bristol <span>Water Quality</span> Explorer</h1>
-    <p>Surface water samples from the Floating Harbour and Bristol's rivers, set against daily rainfall and Wessex Water storm overflow spills.</p>
+    <h1>Bristol <span>Water Quality</span></h1>
   </div>
   <div class="kpis" id="kpis"></div>
 </header>
@@ -836,6 +835,11 @@ footer a{color:var(--accent)}
     <div class="field">
       <label class="lab" for="param">Measurement</label>
       <select id="param"></select>
+    </div>
+    <div class="field">
+      <span class="lab">Bathing water standard</span>
+      <div class="seg" role="group" aria-label="Bathing water standard" style="align-self:flex-start"><button type="button" class="seg-b" data-std="inland">Inland</button><button type="button" class="seg-b" data-std="coastal">Coastal / transitional</button></div>
+      <p class="hint" id="stdhint"></p>
     </div>
     <div class="field">
       <span class="lab">Years</span>
@@ -995,7 +999,7 @@ footer a{color:var(--accent)}
 
 <footer>
   <p><b>Sources.</b> Samples: your file <i>Surface_Water_Quality.csv</i> (43 sites, 1994 to 2026). Rainfall: daily totals for central Bristol from the Open-Meteo historical weather archive (ERA5 reanalysis, a modelled grid value, not a rain gauge). Storm overflow spills: Wessex Water Event Duration Monitoring, published through the Stream National Storm Overflow Hub, for 244 overflows in and around Bristol, January 2020 to June 2026. Waterways and base map: &copy; OpenStreetMap contributors.</p>
-  <p><b>Reading the charts.</b> Bacteria thresholds (E. coli 500 and 1,000 cfu/100 ml; enterococci 200 and 400) are indicative single-sample guides drawn from inland bathing water standards, which are formally assessed on percentiles over four seasons. A zero bacteria count is plotted at 1 on log scales. Distance to an overflow ignores whether it is upstream or downstream of a site. Some readings in the source file look like entry errors (for example a temperature of 136); they are shown as recorded.</p>
+  <p><b>Reading the charts.</b> Green, amber and red use the Bathing Water Regulations 2013 Excellent and Good limits, as summarised by <a href="https://datahq.sas.org.uk/wp-content/uploads/2025/07/Bathing-Water-Classifications-explained.pdf">Surfers Against Sewage</a>. Inland: E. coli under 500 / under 1,000 cfu/100 ml, enterococci under 200 / under 400. Coastal and transitional: E. coli under 250 / under 500, enterococci under 100 / under 200. Official classifications use 95th and 90th percentiles over four seasons, so these single-sample colours are a guide, not a classification. A zero bacteria count is plotted at 1 on log scales. Distance to an overflow ignores whether it is upstream or downstream of a site. Some readings in the source file look like entry errors (for example a temperature of 136); they are shown as recorded.</p>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -1043,6 +1047,15 @@ const META = {
   Turbidity:{l:"Turbidity",u:""}
 };
 const PIDX = {}; D.params.forEach((p,i)=>PIDX[p]=i);
+// Bathing Water Regulations 2013 thresholds (cfu/100 ml): Excellent and Good limits, used as single-sample guides.
+const STANDARDS = {
+  inland:  {name:"Inland",                   ecoli:[500,1000], ent:[200,400]},
+  coastal: {name:"Coastal and transitional", ecoli:[250,500],  ent:[100,200]}
+};
+function applyStandard(){
+  const st = STANDARDS[S.std] || STANDARDS.inland;
+  META.E_Coli_as_CFU.thr = st.ecoli; META.E_Coli_as_MPN.thr = st.ecoli; META.Presumptive_Enterococci_as_CFU.thr = st.ent;
+}
 const PORDER = Object.keys(META).filter(p=>p in PIDX);
 const label = p => META[p].l + (META[p].u ? " ("+META[p].u+")" : "");
 
@@ -1073,7 +1086,9 @@ function spillWin(si,d,n,km){ if (d-n<CSO0 || d>CSO1) return null; let m=0; for(
 const TABS = ["timeline","trends","levels","drivers","events","day","table"];
 const DEFAULT_SITES = ["d1","d5","d4","d18"];
 const S = { param:"E_Coli_as_CFU", y0:2020, y1:2026, sites:new Set(SITES.filter(s=>DEFAULT_SITES.includes(s.id)).map(s=>s.i)),
-  win:2, km:2, tab:"timeline", showEv:true, simple:false, lvPer:"year", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
+  std:"inland", win:2, km:2, tab:"timeline", showEv:true, simple:false, lvPer:"year", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
+try { const sd = localStorage.getItem("wq-std"); if (sd && sd in STANDARDS) S.std = sd; } catch(e){}
+applyStandard();
 try { const t = localStorage.getItem("wq-tab"); if (t) S.tab = t; S.simple = localStorage.getItem("wq-view")==="simple"; JSON.parse(localStorage.getItem("wq-cmp")||"[]").forEach(k=>{ if(k>=1&&k<=5) S.cmp.add(k); }); } catch(e){}
 
 /* ---------- colours from tokens ---------- */
@@ -1092,7 +1107,9 @@ function siteStyle(si){
   if (k<0 || k>=8) return {color:C.muted, symbol:"circle-open"};
   return {color:C.series[k], symbol:SYMBOLS[k]};
 }
-function status(p,v){ const t=META[p].thr; if(!t||v==null) return null; return v<=t[0]?"good":v<=t[1]?"warn":"crit"; }
+function status(p,v){ const t=META[p].thr; if(!t||v==null) return null; return v<t[0]?"good":v<t[1]?"warn":"crit"; }
+const fmtT = t => t.toLocaleString("en-GB");
+const bandText = t => ({good:"under "+fmtT(t[0]), warn:fmtT(t[0])+" to under "+fmtT(t[1]), crit:fmtT(t[1])+" or more"});
 const STATUS_LABEL = {good:"Low",warn:"Elevated",crit:"High"};
 
 /* ---------- helpers ---------- */
@@ -1133,7 +1150,7 @@ function baseLayout(extra){
 function logRange(vals){ const v=vals.filter(x=>x!=null).map(x=>Math.log10(Math.max(x,1))); if(!v.length) return [0,4]; let lo=Math.min(...v), hi=Math.max(...v); if(hi-lo<1){ const c=(hi+lo)/2; lo=c-.5; hi=c+.5; } return [Math.max(lo-.15,-.1), hi+.15]; }
 function ax(extra){ if(extra&&extra.type==="log"&&extra.dtick==null) extra.dtick=1; return Object.assign({gridcolor:C.line, zerolinecolor:C.line, linecolor:C.line, tickcolor:C.line, tickfont:{color:C.muted}, title:{font:{color:C.ink2,size:12}}, automargin:true}, extra||{}); }
 const CFG = {displaylogo:false, responsive:true, displayModeBar:false};
-function titleCfg(t){ return {text:t, x:0, xanchor:"left", font:{family:"Barlow Semi Condensed, sans-serif", size:15, color:C.ink}}; }
+function titleCfg(t){ return {text:t, x:0, xanchor:"left", font:{family:"Poppins, system-ui, sans-serif", size:14, color:C.ink}}; }
 function emptyPlot(id,msg){ const el=document.getElementById(id); el._zoomHooked=false; try{Plotly.purge(el);}catch(e){} el.innerHTML='<div class="empty">'+esc(msg)+'</div>'; }
 function newPlot(id,data,layout){ const el=document.getElementById(id); if(el.querySelector(".empty")) el.innerHTML=""; return Plotly.react(el,data,layout,CFG); }
 
@@ -1160,6 +1177,7 @@ function buildControls(){
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ S.simple=b.dataset.view==="simple"; try{localStorage.setItem("wq-view",S.simple?"simple":"detailed");}catch(e){} renderTab(); });
   $("cmpchips").innerHTML=[1,2,3,4,5].map(k=>'<button type="button" class="chip" data-cmp="'+k+'">'+k+' yr'+(k>1?'s':'')+' earlier</button>').join("")+'<button type="button" class="chip" data-cmp="0">Clear</button>';
   $("cmpchips").onclick=e=>{ const b=e.target.closest("[data-cmp]"); if(!b) return; const k=+b.dataset.cmp; if(!k) S.cmp.clear(); else S.cmp.has(k)?S.cmp.delete(k):S.cmp.add(k); try{localStorage.setItem("wq-cmp",JSON.stringify([...S.cmp]));}catch(e){} renderTab(); };
+  document.querySelectorAll("[data-std]").forEach(b=>b.onclick=()=>{ S.std=b.dataset.std; try{localStorage.setItem("wq-std",S.std);}catch(e){} applyStandard(); update(); });
   document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ S.lvPer=b.dataset.lvper; renderTab(); });
   $("lvnospill").onchange=e=>{ S.lvNoSpill=e.target.checked; renderTab(); };
   $("lvkm").onchange=e=>{ S.lvKm=+e.target.value; renderTab(); };
@@ -1180,6 +1198,9 @@ function buildControls(){
   $("tmore").onclick=()=>{S.tlimit+=500; renderTable();};
 }
 function syncChips(){
+  document.querySelectorAll("[data-std]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.std===S.std)));
+  const st=STANDARDS[S.std], be=bandText(st.ecoli), bn=bandText(st.ent);
+  $("stdhint").innerHTML="Green, amber and red follow the "+st.name.toLowerCase()+" Excellent and Good limits. E. coli: "+be.good+" / "+be.warn+" / "+be.crit+". Enterococci: "+bn.good+" / "+bn.warn+" / "+bn.crit+" cfu/100 ml.";
   document.querySelectorAll("[data-win]").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.win===S.win));
   document.querySelectorAll("[data-km]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.km)===String(S.km)));
   document.querySelectorAll("[data-yr]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.yr===S.y0+"-"+S.y1));
@@ -1205,12 +1226,12 @@ function renderSiteList(){
 function renderKpis(){
   const f=filtered(); const vals=f.map(val);
   const med=quant(vals,.5); const thr=META[S.param].thr;
-  const exc = thr && vals.length ? Math.round(100*vals.filter(v=>v>thr[1]).length/vals.length) : null;
+  const exc = thr && vals.length ? Math.round(100*vals.filter(v=>v>=thr[1]).length/vals.length) : null;
   $("kpis").innerHTML = [
     ['<span class="num">'+f.length.toLocaleString("en-GB")+'</span>',"samples in view"],
     ['<span class="num">'+S.sites.size+'</span>',"sites selected"],
     ['<span class="num">'+nf(med)+'</span>',"median "+META[S.param].l],
-    exc!=null ? ['<span class="num">'+exc+'%</span>',"above "+thr[1].toLocaleString("en-GB")] : null
+    exc!=null ? ['<span class="num">'+exc+'%</span>',"High ("+fmtT(thr[1])+"+)"] : null
   ].filter(Boolean).map(([b,s])=>'<div class="kpi"><b>'+b+'</b><small>'+esc(s)+'</small></div>').join("");
 }
 
@@ -1225,8 +1246,9 @@ function initMap(){
   const wpane = map.createPane("water"); wpane.style.zIndex=350;
   D.waterPolys.forEach(w=>L.polygon(w.p,{pane:"water",className:"ww-poly",weight:1,interactive:false}).addTo(map));
   D.waterLines.forEach(w=>L.polyline(w.p,{pane:"water",className:"ww-line",weight:w.k==="r"?3:w.k==="c"?2.5:1.3,interactive:false}).addTo(map));
-  radLayer = L.layerGroup().addTo(map);
-  ovLayer = L.layerGroup().addTo(map);
+  radLayer = L.layerGroup(); ovLayer = L.layerGroup();
+  if(!FOCUS){ radLayer.addTo(map); ovLayer.addTo(map); }
+  map.on("overlayadd overlayremove",()=>renderMap());
   siteLayer = L.layerGroup().addTo(map);
   L.control.layers(null,{"Storm overflows":ovLayer,"Search radius":radLayer},{collapsed:true,position:"topright"}).addTo(map);
   const pts = SITES.map(s=>[s.lat,s.lon]); map.fitBounds(pts,{padding:[20,20],animate:false});
@@ -1244,14 +1266,15 @@ function renderMap(){
   let colorOf, legend;
   if (m.thr){
     colorOf = v => v==null?C.nodata:({good:C.good,warn:C.warn,crit:C.crit})[status(p,v)];
-    legend = '<span><i style="background:'+C.good+'"></i>Low (&le; '+m.thr[0]+')</span><span><i style="background:'+C.warn+'"></i>Elevated (&le; '+m.thr[1].toLocaleString("en-GB")+')</span><span><i style="background:'+C.crit+'"></i>High (&gt; '+m.thr[1].toLocaleString("en-GB")+')</span>';
+    const bt=bandText(m.thr);
+    legend = '<span><i style="background:'+C.good+'"></i>Low ('+bt.good+')</span><span><i style="background:'+C.warn+'"></i>Elevated ('+bt.warn+')</span><span><i style="background:'+C.crit+'"></i>High ('+bt.crit+')</span>';
   } else {
     const vs = meds.filter(v=>v!=null).sort((a,b)=>a-b);
     const br = [.2,.4,.6,.8].map(q=>quant(vs,q));
     colorOf = v => { if(v==null) return C.nodata; let k=0; while(k<4 && v>br[k]) k++; return SEQ[k]; };
     legend = vs.length ? SEQ.map((c,k)=>'<span><i style="background:'+c+'"></i>'+(k===0?"&le; "+nf(br[0]):k===4?"&gt; "+nf(br[3]):nf(br[k-1])+"–"+nf(br[k]))+'</span>').join("") : "";
   }
-  legend += '<span><i style="background:'+C.nodata+'"></i>No samples</span><span><i class="sq" style="background:'+C.spill+'"></i>Storm overflow (size = spill hours)</span>';
+  legend += '<span><i style="background:'+C.nodata+'"></i>No samples</span>'+(map.hasLayer(ovLayer)?'<span><i class="sq" style="background:'+C.spill+'"></i>Storm overflow (size = spill hours)</span>':'');
   $("legend").innerHTML = legend;
   $("maptitle").textContent = dayMode ? META[p].l+" on "+fmtShort(S.day) : "Median "+META[p].l+", "+S.y0+(S.y1!==S.y0?"–"+S.y1:"");
   $("mapsub").textContent = "Circles are sampling sites. A dark ring marks a selected site.";
@@ -1285,7 +1308,7 @@ function renderTimeline(){
   document.querySelectorAll("[data-view]").forEach(b=>{ b.setAttribute("aria-pressed", String((b.dataset.view==="simple")===(S.simple&&can))); if(b.dataset.view==="simple") b.disabled=!can; });
   document.querySelectorAll("[data-cmp]").forEach(b=>{ const k=+b.dataset.cmp; b.setAttribute("aria-pressed", String(k?S.cmp.has(k):false)); if(!k) b.hidden=!S.cmp.size; });
   const cmpNote = S.cmp.size ? " Earlier years are moved forward onto the same calendar dates, so they line up with the current period. Rain and spill panels show the current period only." : "";
-  $("simplehint").textContent = (can ? (S.simple?"Each sample is placed in a band: Low ≤ "+META[S.param].thr[0].toLocaleString("en-GB")+", Elevated ≤ "+META[S.param].thr[1].toLocaleString("en-GB")+", High above that ("+META[S.param].u+"). Hover for the exact value.":"") : "The Low / Elevated / High view is available for E. coli and intestinal enterococci.") + cmpNote;
+  $("simplehint").textContent = (can ? (S.simple?(()=>{ const bt=bandText(META[S.param].thr); return "Each sample is placed in a band: Low "+bt.good+", Elevated "+bt.warn+", High "+bt.crit+" ("+META[S.param].u+", "+STANDARDS[S.std].name.toLowerCase()+" standard). Hover for the exact value."; })():"") : "The Low / Elevated / High view is available for E. coli and intestinal enterococci.") + cmpNote;
   drawTimeline("tl",d0,d1,{selector:true});
 }
 const VIEW={};
@@ -1355,7 +1378,7 @@ function drawTimeline(el,d0,d1,opts){
     margin:{l:66,r:16,t:40,b:40},
     xaxis:ax({type:"date",anchor:"y3",range:(VIEW[el]&&VIEW[el].key===vkey)?VIEW[el].r:[iso(d0),iso(d1+1)],showspikes:true,spikemode:"across",spikethickness:1,spikecolor:C.muted,spikedash:"dot",
       rangeselector:!opts.selector?undefined:{buttons:[{step:"month",count:6,label:"6m"},{step:"year",count:1,label:"1y"},{step:"year",count:3,label:"3y"},{step:"all",label:"All"}],bgcolor:C.bg,activecolor:C.accent,bordercolor:C.line,borderwidth:1,font:{color:C.ink2},x:1,xanchor:"right",y:1.06}}),
-    yaxis: simple ? ax({domain:[.46,1],range:[-.55,2.55],tickvals:[0,1,2],ticktext:["Low<br>≤ "+m.thr[0].toLocaleString("en-GB"),"Elevated<br>≤ "+m.thr[1].toLocaleString("en-GB"),"High<br>> "+m.thr[1].toLocaleString("en-GB")],showgrid:false,zeroline:false,title:{text:m.l}})
+    yaxis: simple ? ax({domain:[.46,1],range:[-.55,2.55],tickvals:[0,1,2],ticktext:["Low<br>< "+fmtT(m.thr[0]),"Elevated<br>< "+fmtT(m.thr[1]),"High<br>"+fmtT(m.thr[1])+"+"],showgrid:false,zeroline:false,title:{text:m.l}})
       : ax(Object.assign({domain:[.46,1],type:m.log?"log":"linear",title:{text:label(p)}}, m.log?{range:logRange(f.concat(cmpSamples).map(s=>s[pi]).concat(m.thr||[]))}:{})),
     yaxis2:ax({domain:[.25,.42],title:{text:"Rain (mm/day)"},rangemode:"tozero"}),
     yaxis3:ax({domain:[0,.21],title:{text:"Spill hours/day"},rangemode:"tozero"}),
@@ -1382,7 +1405,7 @@ function renderLevels(){
     const st=status(p,s[PIDX[p]]); buckets.forEach(o=>{ o[st]++; o.n++; }); });
   const lastDay=SAMPLES.reduce((a,s)=>Math.max(a,s.d),0), lastY=dayDate(lastDay).getUTCFullYear();
   const T=m.thr.map(t=>t.toLocaleString("en-GB"));
-  $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into <b>Low</b> (≤ "+T[0]+"), <b>Elevated</b> (≤ "+T[1]+") and <b>High</b> (above "+T[1]+" "+esc(m.u)+"). "+
+  $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into <b>Low</b> (under "+T[0]+"), <b>Elevated</b> ("+T[0]+" to under "+T[1]+") and <b>High</b> ("+T[1]+" or more "+esc(m.u)+") using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. "+
     (S.lvPer==="summer"?"Only samples taken between 1 April and 31 October are counted. ":"")+
     "Bars and table show the share of each year's samples, so years with more or fewer samples compare fairly. Sample counts are in brackets."+(S.y1>=lastY?" "+lastY+" runs to "+fmtShort(lastDay)+" only.":"");
   $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
@@ -1436,9 +1459,9 @@ function renderTrends(){
   const all=f; const byY=new Map(); all.forEach(s=>{ if(!byY.has(s.y)) byY.set(s.y,[]); byY.get(s.y).push(val(s)); });
   const ys=[...byY.keys()].sort((a,b)=>a-b);
   if(m.thr){
-    const pct=ys.map(y=>100*byY.get(y).filter(v=>v>m.thr[1]).length/byY.get(y).length);
+    const pct=ys.map(y=>100*byY.get(y).filter(v=>v>=m.thr[1]).length/byY.get(y).length);
     newPlot("tr-exc",[{type:"bar",x:ys,y:pct,customdata:ys.map(y=>byY.get(y).length),marker:{color:C.crit,cornerradius:3},hovertemplate:"%{x}: %{y:.0f}% of %{customdata} samples<extra></extra>",showlegend:false}],
-      baseLayout({title:titleCfg("Share of samples above "+m.thr[1].toLocaleString("en-GB")+" "+m.u),xaxis:ax({}),yaxis:ax({title:{text:"% of samples"},range:[0,100]}),showlegend:false,bargap:.25}));
+      baseLayout({title:titleCfg("Share of samples at "+fmtT(m.thr[1])+" "+m.u+" or more (High)"),xaxis:ax({}),yaxis:ax({title:{text:"% of samples"},range:[0,100]}),showlegend:false,bargap:.25}));
   } else {
     newPlot("tr-exc",[{type:"bar",x:ys,y:ys.map(y=>byY.get(y).length),marker:{color:C.accent,cornerradius:3},hovertemplate:"%{x}: %{y} samples<extra></extra>",showlegend:false}],
       baseLayout({title:titleCfg("Samples per year"),xaxis:ax({}),yaxis:ax({title:{text:"Samples"}}),showlegend:false,bargap:.25}));
@@ -1461,8 +1484,8 @@ function renderDrivers(){
   $("drstats").innerHTML =
     '<div class="stat"><h3>Rainfall</h3><p>'+esc(m.l)+' shows '+rhoWords(rhoR)+' with rainfall '+(rhoR!=null?'(Spearman ρ = '+rhoR.toFixed(2)+', ':'(')+rr.length.toLocaleString("en-GB")+' samples).</p></div>'+
     '<div class="stat"><h3>Storm overflow spills</h3><p>'+(hh.length? esc(m.l)+' shows '+rhoWords(rhoH)+' with nearby spill hours '+(rhoH!=null?'(ρ = '+rhoH.toFixed(2)+', ':'(')+hh.length.toLocaleString("en-GB")+' samples since 2020).' : 'No samples in these years overlap the overflow data (January 2020 to June 2026).')+'</p></div>';
-  const metric = arr => m.thr ? (arr.length? 100*arr.filter(v=>v>m.thr[1]).length/arr.length : null) : quant(arr,.5);
-  const mName = m.thr ? "% of samples above "+m.thr[1].toLocaleString("en-GB") : "Median "+m.l;
+  const metric = arr => m.thr ? (arr.length? 100*arr.filter(v=>v>=m.thr[1]).length/arr.length : null) : quant(arr,.5);
+  const mName = m.thr ? "% of samples High ("+fmtT(m.thr[1])+"+)" : "Median "+m.l;
   const band=(list,key,bands)=>bands.map(([n,a,b])=>{ const vs=list.filter(o=> b===0 ? o[key]===0 : (o[key]>=a && o[key]<b)).map(o=>o.v); return {n, y:metric(vs), c:vs.length}; });
   const rb=band(rr,"r",RAIN_BANDS), sb=band(hh,"h",SPILL_BANDS);
   const barT=(b,col)=>[{type:"bar",x:b.map(o=>o.n),y:b.map(o=>o.y),text:b.map(o=>"n="+o.c),textposition:"outside",textfont:{color:C.muted,size:11},cliponaxis:false,marker:{color:col,cornerradius:3},hovertemplate:"%{x}: %{y:.3~f}<br>%{text}<extra></extra>",showlegend:false}];
@@ -1637,10 +1660,11 @@ function update(){ syncChips(); renderSiteList(); renderKpis(); renderMap(); ren
 const FOCUS = TABS.includes(window.WQ_FOCUS) ? window.WQ_FOCUS : null;
 function applyFocus(){
   S.tab=FOCUS;
-  [document.querySelector(".tabs"), $("map").closest(".card"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
+  $("map").closest(".card").style.order = 2;
+  [document.querySelector(".tabs"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
     .forEach(el=>{ if(el) el.hidden=true; });
 }
-buildControls(); if(FOCUS) applyFocus(); else initMap();
+buildControls(); if(FOCUS) applyFocus(); initMap();
 if(!TABS.includes(S.tab)) S.tab="timeline";
 document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
 TABS.forEach(k=>$("p-"+k).hidden = k!==S.tab);
