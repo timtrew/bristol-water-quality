@@ -810,6 +810,11 @@ tbody tr:hover{background:var(--accent-soft)}
 .seg-b{border:0;background:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--ink-2)}
 .seg-b[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .seg-b:disabled{opacity:.45;cursor:default}
+.info{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--accent);background:none;color:var(--accent);font:600 11px/1 var(--f-body);font-style:italic;cursor:pointer;padding:0;display:inline-grid;place-items:center}
+.info[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink)}
+.infopop{font-size:.8rem;line-height:1.5;color:var(--ink-2);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.infopop p{margin:0 0 6px}.infopop p:last-child{margin:0}
+.infopop a{color:var(--accent)}
 .addev{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
 .addev summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.05rem;color:var(--accent)}
 .ovlist button{border:0;background:none;color:var(--crit);cursor:pointer;font-size:.8rem}
@@ -837,9 +842,9 @@ footer a{color:var(--accent)}
       <select id="param"></select>
     </div>
     <div class="field">
-      <span class="lab">Bathing water standard</span>
+      <div style="display:flex;align-items:center;gap:6px"><span class="lab">Bathing water standard</span><button type="button" class="info" id="stdinfo" aria-expanded="false" aria-controls="stdhint" aria-label="What green, amber and red mean">i</button></div>
       <div class="seg" role="group" aria-label="Bathing water standard" style="align-self:flex-start"><button type="button" class="seg-b" data-std="inland">Inland</button><button type="button" class="seg-b" data-std="coastal">Coastal / transitional</button></div>
-      <p class="hint" id="stdhint"></p>
+      <div class="infopop" id="stdhint" hidden></div>
     </div>
     <div class="field">
       <span class="lab">Years</span>
@@ -1177,6 +1182,7 @@ function buildControls(){
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ S.simple=b.dataset.view==="simple"; try{localStorage.setItem("wq-view",S.simple?"simple":"detailed");}catch(e){} renderTab(); });
   $("cmpchips").innerHTML=[1,2,3,4,5].map(k=>'<button type="button" class="chip" data-cmp="'+k+'">'+k+' yr'+(k>1?'s':'')+' earlier</button>').join("")+'<button type="button" class="chip" data-cmp="0">Clear</button>';
   $("cmpchips").onclick=e=>{ const b=e.target.closest("[data-cmp]"); if(!b) return; const k=+b.dataset.cmp; if(!k) S.cmp.clear(); else S.cmp.has(k)?S.cmp.delete(k):S.cmp.add(k); try{localStorage.setItem("wq-cmp",JSON.stringify([...S.cmp]));}catch(e){} renderTab(); };
+  $("stdinfo").onclick=()=>{ const open=$("stdhint").hidden; $("stdhint").hidden=!open; $("stdinfo").setAttribute("aria-expanded",String(open)); };
   document.querySelectorAll("[data-std]").forEach(b=>b.onclick=()=>{ S.std=b.dataset.std; try{localStorage.setItem("wq-std",S.std);}catch(e){} applyStandard(); update(); });
   document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ S.lvPer=b.dataset.lvper; renderTab(); });
   $("lvnospill").onchange=e=>{ S.lvNoSpill=e.target.checked; renderTab(); };
@@ -1200,7 +1206,10 @@ function buildControls(){
 function syncChips(){
   document.querySelectorAll("[data-std]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.std===S.std)));
   const st=STANDARDS[S.std], be=bandText(st.ecoli), bn=bandText(st.ent);
-  $("stdhint").innerHTML="Green, amber and red follow the "+st.name.toLowerCase()+" Excellent and Good limits. E. coli: "+be.good+" / "+be.warn+" / "+be.crit+". Enterococci: "+bn.good+" / "+bn.warn+" / "+bn.crit+" cfu/100 ml.";
+  $("stdhint").innerHTML='<p>Green, amber and red follow the '+st.name.toLowerCase()+' Excellent and Good limits in the Bathing Water Regulations 2013 (cfu/100 ml).</p>'+
+    '<p><b>E. coli</b><br>Green: '+be.good+'<br>Amber: '+be.warn+'<br>Red: '+be.crit+'</p>'+
+    '<p><b>Intestinal enterococci</b><br>Green: '+bn.good+'<br>Amber: '+bn.warn+'<br>Red: '+bn.crit+'</p>'+
+    '<p>Official classifications use percentiles over four seasons, so colours for single samples are a guide. <a href="https://datahq.sas.org.uk/wp-content/uploads/2025/07/Bathing-Water-Classifications-explained.pdf">Source: Surfers Against Sewage</a></p>';
   document.querySelectorAll("[data-win]").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.win===S.win));
   document.querySelectorAll("[data-km]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.km)===String(S.km)));
   document.querySelectorAll("[data-yr]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.yr===S.y0+"-"+S.y1));
