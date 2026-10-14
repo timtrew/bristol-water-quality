@@ -36,6 +36,7 @@
   --tile-filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6);
   color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--f-body);font-size:15px;line-height:1.45;margin:0;padding-inline:16px;padding-block:0 32px}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:.01em}
@@ -565,6 +566,7 @@ function initMap(){
 }
 const SEQ = ["#cde2fb","#86b6ef","#3987e5","#1c5cab","#0d366b"];
 function renderMap(){
+  if(!map) return;
   siteLayer.clearLayers(); radLayer.clearLayers(); ovLayer.clearLayers();
   const p=S.param, pi=PIDX[p], m=META[p];
   const dayMode = S.tab==="day" && S.day!=null;
@@ -950,7 +952,8 @@ function renderTable(){
 
 /* ---------- orchestration ---------- */
 function setTab(t){
-  S.tab=t; try{localStorage.setItem("wq-tab",t);}catch(e){}
+  if(FOCUS && t!==FOCUS) return;
+  S.tab=t; if(!FOCUS) try{localStorage.setItem("wq-tab",t);}catch(e){}
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
   TABS.forEach(k=>$("p-"+k).hidden = k!==t);
   renderTab(); renderMap();
@@ -963,7 +966,13 @@ function renderTab(){
 }
 function update(){ syncChips(); renderSiteList(); renderKpis(); renderMap(); renderTab(); }
 
-buildControls(); initMap();
+const FOCUS = TABS.includes(window.WQ_FOCUS) ? window.WQ_FOCUS : null;
+function applyFocus(){
+  S.tab=FOCUS;
+  [document.querySelector(".tabs"), $("map").closest(".card"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
+    .forEach(el=>{ if(el) el.hidden=true; });
+}
+buildControls(); if(FOCUS) applyFocus(); else initMap();
 if(!TABS.includes(S.tab)) S.tab="timeline";
 document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
 TABS.forEach(k=>$("p-"+k).hidden = k!==S.tab);
