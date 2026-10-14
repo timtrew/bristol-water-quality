@@ -48,6 +48,7 @@ button,input,select{font:inherit;color:inherit}
 header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-block:18px 14px;border-bottom:1px solid var(--line);margin-bottom:16px}
 header.top h1{font-size:1.7rem;font-weight:700;line-height:1.1;letter-spacing:-.01em}
 header.top h1 span{color:var(--accent)}
+.beta{font-family:var(--f-body);font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);border:1.5px solid var(--accent);border-radius:999px;padding:2px 8px;vertical-align:.55em;margin-left:4px}
 header.top p{margin:4px 0 0;color:var(--ink-2);max-width:62ch}
 .kpis{display:flex;flex-wrap:wrap;gap:6px 22px}
 .kpi{display:flex;flex-direction:column}
@@ -166,7 +167,7 @@ footer a{color:var(--accent)}
 
 <header class="top">
   <div>
-    <h1>Bristol <span>Water Quality</span></h1>
+    <h1>Bristol <span>Water Quality</span> <sup class="beta" title="Still being developed: figures and features may change">Beta</sup></h1>
   </div>
   <div class="kpis" id="kpis"></div>
 </header>
