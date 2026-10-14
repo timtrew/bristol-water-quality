@@ -920,12 +920,12 @@ footer a{color:var(--accent)}
         <div id="tl" class="plot" style="height:640px"></div>
       </div>
       <div class="panel" id="p-levels" hidden>
-        <p class="callout" id="lv-note"></p>
         <div class="row" style="justify-content:space-between;align-items:center;gap:8px 14px;margin-top:6px">
-          <h3 id="lv-title" style="flex:1 1 240px;font-size:1.1rem"></h3>
+          <div style="flex:1 1 240px;display:flex;align-items:center;gap:8px;min-width:0"><h3 id="lv-title" style="font-size:1.1rem"></h3><button type="button" class="info" id="lvinfo" aria-expanded="false" aria-controls="lv-note" aria-label="How these figures are worked out" style="flex:none">i</button></div>
           <div class="seg" role="group" aria-label="Season" style="flex:none"><button type="button" class="seg-b" data-lvper="year">Full year</button><button type="button" class="seg-b" data-lvper="summer">Summer only (Apr – Sep)</button><button type="button" class="seg-b" data-lvper="winter">Winter only (Oct – Mar)</button></div>
           <div class="seg" role="group" aria-label="Units" style="flex:none"><button type="button" class="seg-b" data-lvunit="pct">% of samples</button><button type="button" class="seg-b" data-lvunit="n">Number of samples</button></div>
         </div>
+        <div class="infopop" id="lv-note" hidden style="margin-top:8px;font-size:.84rem;max-width:80ch"></div>
         <div class="nospill" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:.9rem">
           <label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="lvnospill"> Leave out samples taken after a storm overflow spill</label>
           <span>within</span><select id="lvkm" style="width:auto" aria-label="Distance to overflow"><option value="1">1 km</option><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select>
@@ -1185,6 +1185,7 @@ function buildControls(){
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ S.simple=b.dataset.view==="simple"; try{localStorage.setItem("wq-view",S.simple?"simple":"detailed");}catch(e){} renderTab(); });
   $("cmpchips").innerHTML=[1,2,3,4,5].map(k=>'<button type="button" class="chip" data-cmp="'+k+'">'+k+' yr'+(k>1?'s':'')+' earlier</button>').join("")+'<button type="button" class="chip" data-cmp="0">Clear</button>';
   $("cmpchips").onclick=e=>{ const b=e.target.closest("[data-cmp]"); if(!b) return; const k=+b.dataset.cmp; if(!k) S.cmp.clear(); else S.cmp.has(k)?S.cmp.delete(k):S.cmp.add(k); try{localStorage.setItem("wq-cmp",JSON.stringify([...S.cmp]));}catch(e){} renderTab(); };
+  $("lvinfo").onclick=()=>{ const open=$("lv-note").hidden; $("lv-note").hidden=!open; $("lvinfo").setAttribute("aria-expanded",String(open)); };
   $("stdinfo").onclick=()=>{ const open=$("stdhint").hidden; $("stdhint").hidden=!open; $("stdinfo").setAttribute("aria-expanded",String(open)); };
   document.querySelectorAll("[data-std]").forEach(b=>b.onclick=()=>{ S.std=b.dataset.std; try{localStorage.setItem("wq-std",S.std);}catch(e){} applyStandard(); update(); });
   document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ S.lvPer=b.dataset.lvper; renderTab(); });
