@@ -151,6 +151,9 @@ tbody tr:hover{background:var(--accent-soft)}
 .infopop{font-size:.8rem;line-height:1.5;color:var(--ink-2);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .infopop p{margin:0 0 6px}.infopop p:last-child{margin:0}
 .infopop a{color:var(--accent)}
+.prow{display:grid;grid-template-columns:5.6em minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:center;font-size:.85rem;color:var(--ink-2)}
+.prow select{padding:6px 6px}
+.prow.cmp{grid-template-columns:5.6em 4.6em minmax(0,1fr)}
 .addev{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
 .addev summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.05rem;color:var(--accent)}
 .ovlist button{border:0;background:none;color:var(--crit);cursor:pointer;font-size:.8rem}
@@ -183,7 +186,18 @@ footer a{color:var(--accent)}
       <div class="seg" role="group" aria-label="Bathing water standard" style="align-self:flex-start"><button type="button" class="seg-b" data-std="inland">Inland</button><button type="button" class="seg-b" data-std="coastal">Coastal / transitional</button></div>
       <div class="infopop" id="stdhint" hidden></div>
     </div>
-    <div class="field">
+    <div class="field" id="periodfield" hidden>
+      <span class="lab">Period</span>
+      <div class="prow"><span>From</span><select id="pfm" aria-label="From month"></select><select id="pfy" aria-label="From year"></select></div>
+      <div class="prow"><span>To</span><select id="ptm" aria-label="To month"></select><select id="pty" aria-label="To year"></select></div>
+      <div class="prow cmp"><span>Compare with</span><select id="pcn" aria-label="Number of earlier periods"></select><select id="pcu" aria-label="Period length"><option value="y">years</option><option value="q">quarters</option><option value="m">months</option></select></div>
+      <div class="chips">
+        <button class="chip" data-pp="current" type="button">Current year</button>
+        <button class="chip" data-pp="spill" type="button">Spill-data years</button>
+        <button class="chip" data-pp="all" type="button">All years</button>
+      </div>
+    </div>
+    <div class="field" id="yearsfield">
       <span class="lab">Years</span>
       <div class="row">
         <select id="y0" aria-label="From year"></select>
@@ -406,7 +420,8 @@ const label = p => META[p].l + (META[p].u ? " ("+META[p].u+")" : "");
 const SITES = D.sites;
 SITES.forEach((s,i)=>{ s.i=i; });
 const SAMPLES = D.samples;
-SAMPLES.forEach(s=>{ s.y = dayDate(s.d).getUTCFullYear(); });
+SAMPLES.forEach(s=>{ const t=dayDate(s.d); s.y=t.getUTCFullYear(); s.mi=s.y*12+t.getUTCMonth(); });
+const LAST_DAY = SAMPLES.reduce((a,s)=>Math.max(a,s.d),0), LAST_DAY_DATE = LAST_DAY, LAST_YEAR = dayDate(LAST_DAY).getUTCFullYear();
 const sampleDays = [...new Set(SAMPLES.map(s=>s.d))].sort((a,b)=>a-b);
 const RAIN0 = D.rainStart, RAIN = D.rain;
 const rainOn = d => { const v = RAIN[d-RAIN0]; return v==null ? null : v; };
@@ -429,7 +444,7 @@ function spillWin(si,d,n,km){ if (d-n<CSO0 || d>CSO1) return null; let m=0; for(
 const TABS = ["timeline","trends","levels","drivers","events","day","table"];
 const DEFAULT_SITES = ["d1","d5","d4","d18"];
 const S = { param:"E_Coli_as_CFU", y0:2020, y1:2026, sites:new Set(SITES.filter(s=>DEFAULT_SITES.includes(s.id)).map(s=>s.i)),
-  std:"inland", win:2, km:2, tab:"timeline", showEv:true, simple:false, lvPer:"year", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
+  std:"inland", win:2, km:2, tab:"timeline", showEv:true, simple:false, pFrom:0, pTo:0, pN:0, pU:"y", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
 try { const sd = localStorage.getItem("wq-std"); if (sd && sd in STANDARDS) S.std = sd; } catch(e){}
 applyStandard();
 try { const t = localStorage.getItem("wq-tab"); if (t) S.tab = t; S.simple = localStorage.getItem("wq-view")==="simple"; JSON.parse(localStorage.getItem("wq-cmp")||"[]").forEach(k=>{ if(k>=1&&k<=5) S.cmp.add(k); }); } catch(e){}
@@ -526,7 +541,6 @@ function buildControls(){
   $("lvinfo").onclick=()=>{ const open=$("lv-note").hidden; $("lv-note").hidden=!open; $("lvinfo").setAttribute("aria-expanded",String(open)); };
   $("stdinfo").onclick=()=>{ const open=$("stdhint").hidden; $("stdhint").hidden=!open; $("stdinfo").setAttribute("aria-expanded",String(open)); };
   document.querySelectorAll("[data-std]").forEach(b=>b.onclick=()=>{ S.std=b.dataset.std; try{localStorage.setItem("wq-std",S.std);}catch(e){} applyStandard(); update(); });
-  document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ S.lvPer=b.dataset.lvper; renderTab(); });
   $("lvnospill").onchange=e=>{ S.lvNoSpill=e.target.checked; renderTab(); };
   $("lvkm").onchange=e=>{ S.lvKm=+e.target.value; renderTab(); };
   $("lvdays").onchange=e=>{ S.lvDays=+e.target.value; renderTab(); };
@@ -751,83 +765,135 @@ function drawTimeline(el,d0,d1,opts){
 
 /* ---------- trends ---------- */
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-// Seasons: summer is Apr–Sep of a year; winter runs Oct of one year to Mar of the next and is keyed by the year it starts.
-const SEASONS = {
-  year:   {label:"Full year",               title:"full year"},
-  summer: {label:"Summer only (Apr – Sep)", title:"summer only (Apr – Sep)"},
-  winter: {label:"Winter only (Oct – Mar)", title:"winter only (Oct – Mar)"}
+// Period controls for Levels by year, modelled on Xero report dates: a From and To month,
+// then "compare with" a number of earlier periods (each the same window shifted back).
+// Months are counted as year*12 + month index, so Jan 2026 = 2026*12.
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const mYear = m => Math.floor(m/12), mMon = m => ((m%12)+12)%12;
+const UNIT = {y:{months:12, one:"year", many:"years", max:32}, q:{months:3, one:"quarter", many:"quarters", max:12}, m:{months:1, one:"month", many:"months", max:24}};
+const FIRST_YEAR = 1994;
+function periodLabel(f,t){
+  if(mMon(f)===0 && t===f+11) return String(mYear(f));
+  if(f===t) return MON[mMon(f)]+" "+mYear(f);
+  if(mYear(f)===mYear(t)) return MON[mMon(f)]+" – "+MON[mMon(t)]+" "+mYear(f);
+  return MON[mMon(f)]+" "+mYear(f)+" – "+MON[mMon(t)]+" "+mYear(t);
+}
+// Short label for the x axis. When comparing years the months are in the title, so a year (or 25/26) is enough.
+function periodTick(f,t,narrow){
+  const yy=y=>String(y).slice(2);
+  if(S.pU==="y"){
+    if(mYear(f)===mYear(t)) return narrow?"’"+yy(mYear(t)):String(mYear(t));
+    return yy(mYear(f))+"/"+yy(mYear(t));
+  }
+  if(f===t) return MON[mMon(f)]+"<br>"+(narrow?"’"+yy(mYear(f)):mYear(f));
+  return MON[mMon(f)]+"–"+MON[mMon(t)]+"<br>"+(narrow?"’"+yy(mYear(t)):mYear(t));
+}
+function levelPeriods(){
+  const step=UNIT[S.pU].months, out=[];
+  for(let k=S.pN;k>=0;k--){ const f=S.pFrom-k*step, t=S.pTo-k*step; if(mYear(t)<FIRST_YEAR) continue; out.push({f,t,k}); }
+  return out;
+}
+function syncPeriodYears(){
+  const ps=levelPeriods();
+  S.y0=Math.max(FIRST_YEAR, ps.length?mYear(ps[0].f):mYear(S.pFrom));
+  S.y1=Math.min(LAST_YEAR, Math.max(S.y0, mYear(S.pTo)));
+}
+const PRESETS = {
+  current: ()=>({f:LAST_YEAR*12, t:LAST_YEAR*12+11, n:0, u:"y"}),
+  spill:   ()=>({f:LAST_YEAR*12, t:LAST_YEAR*12+11, n:LAST_YEAR-2020, u:"y"}),
+  all:     ()=>({f:LAST_YEAR*12, t:LAST_YEAR*12+11, n:LAST_YEAR-FIRST_YEAR, u:"y"})
 };
-function seasonKeys(d){ const t=dayDate(d), y=t.getUTCFullYear(), mo=t.getUTCMonth();
-  return {year:y, summer:(mo>=3&&mo<=8)?y:null, winter:mo>=9?y:(mo<=2?y-1:null)}; }
-const winterLabel = k => k+"–"+String(k+1).slice(2);
+// Season buttons keep the year of the To month and set the months.
+const SEASON_MONTHS = {year:[0,11], summer:[3,8], winter:[-3,2]};
+function initPeriod(){
+  const yrs=[]; for(let y=FIRST_YEAR;y<=LAST_YEAR;y++) yrs.push('<option value="'+y+'">'+y+'</option>');
+  const mons=MON.map((n,i)=>'<option value="'+i+'">'+n+'</option>').join("");
+  ["pfm","ptm"].forEach(id=>$(id).innerHTML=mons); ["pfy","pty"].forEach(id=>$(id).innerHTML=yrs.join(""));
+  const read=()=>{ S.pFrom=+$("pfy").value*12+ +$("pfm").value; S.pTo=+$("pty").value*12+ +$("ptm").value;
+    if(S.pTo<S.pFrom) S.pTo=S.pFrom; periodChanged(); };
+  ["pfm","pfy","ptm","pty"].forEach(id=>$(id).onchange=read);
+  $("pcn").onchange=()=>{ S.pN=+$("pcn").value; periodChanged(); };
+  $("pcu").onchange=()=>{ S.pU=$("pcu").value; S.pN=Math.min(S.pN,UNIT[S.pU].max); periodChanged(); };
+  document.querySelectorAll("[data-pp]").forEach(b=>b.onclick=()=>{ const p=PRESETS[b.dataset.pp](); S.pFrom=p.f; S.pTo=p.t; S.pN=p.n; S.pU=p.u; periodChanged(); });
+  document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ const [a,z]=SEASON_MONTHS[b.dataset.lvper], y=mYear(S.pTo); S.pFrom=y*12+a; S.pTo=y*12+z; periodChanged(); });
+  const p=PRESETS.spill(); S.pFrom=p.f; S.pTo=p.t; S.pN=p.n; S.pU=p.u; syncPeriodYears();
+}
+function periodChanged(){ syncPeriodYears(); $("y0").value=S.y0; $("y1").value=S.y1; update(); }
+function syncPeriodControls(){
+  $("pfm").value=mMon(S.pFrom); $("pfy").value=mYear(S.pFrom); $("ptm").value=mMon(S.pTo); $("pty").value=mYear(S.pTo);
+  const u=UNIT[S.pU]; $("pcu").value=S.pU;
+  $("pcn").innerHTML=Array.from({length:u.max+1},(_,i)=>'<option value="'+i+'">'+(i===0?"None":String(i))+'</option>').join("");
+  $("pcn").value=String(S.pN);
+  Object.keys(PRESETS).forEach(k=>{ const p=PRESETS[k](); const b=document.querySelector('[data-pp="'+k+'"]'); if(b) b.setAttribute("aria-pressed",String(p.f===S.pFrom&&p.t===S.pTo&&p.n===S.pN&&p.u===S.pU)); });
+  document.querySelectorAll("[data-lvper]").forEach(b=>{ const [a,z]=SEASON_MONTHS[b.dataset.lvper], y=mYear(S.pTo); b.setAttribute("aria-pressed",String(S.pFrom===y*12+a&&S.pTo===y*12+z)); });
+}
 function renderLevels(){
   const p=S.param, m=META[p], pi=PIDX[p];
-  if(!(S.lvPer in SEASONS)) S.lvPer="year";
-  document.querySelectorAll("[data-lvper]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvper===S.lvPer)));
+  syncPeriodControls();
   document.querySelectorAll("[data-lvunit]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvunit===S.lvUnit)));
-  if(!m.thr){ $("lv-title").textContent=""; $("lv-note").textContent="Levels are available for E. coli and intestinal enterococci. Choose one of those under Measurement."; emptyPlot("tr-levels","Choose E. coli or intestinal enterococci to see Low, Elevated and High counts."); $("lvtable").innerHTML=""; return; }
-  const years=[]; for(let y=S.y0;y<=S.y1;y++) years.push(y);
+  if(!m.thr){ $("lv-title").textContent=""; $("lv-note").textContent="Levels are available for E. coli and intestinal enterococci. Choose one of those under Measurement."; emptyPlot("tr-levels","Choose E. coli or intestinal enterococci to see the bathing water bands."); $("lvtable").innerHTML=""; return; }
   const blank=()=>({exc:0,good:0,suff:0,poor:0,n:0,rm:0,unk:0});
-  const B={year:{},summer:{},winter:{}}; years.forEach(y=>{ B.year[y]=blank(); B.summer[y]=blank(); B.winter[y]=blank(); });
+  const ps=levelPeriods(); ps.forEach(q=>q.o=blank());
   const NS=S.lvNoSpill;
   SAMPLES.forEach(s=>{
     if(s[pi]===undefined || !S.sites.has(s.s)) return;
-    const k=seasonKeys(s.d); const buckets=["year","summer","winter"].map(z=>B[z][k[z]]).filter(Boolean);
-    if(!buckets.length) return;
-    if(NS){ const h=spillWin(s.s,s.d,S.lvDays,S.lvKm); if(h==null){ buckets.forEach(o=>o.unk++); return; } if(h>0){ buckets.forEach(o=>o.rm++); return; } }
-    const st=status(p,s[pi]); buckets.forEach(o=>{ o[st]++; o.n++; }); });
-  const lastDay=SAMPLES.reduce((a,s)=>Math.max(a,s.d),0), lastY=dayDate(lastDay).getUTCFullYear();
-  const T=m.thr.map(fmtT);
-  const per=S.lvPer;
-  $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into "+(()=>{ const bt=bandText(m.thr); return BANDS.map(([k,n])=>"<b>"+n+"</b> ("+bt[k]+")").join(", "); })()+" "+esc(m.u)+", using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. These are single samples, while official classifications use percentiles over four seasons, so treat the bands as a guide. "+
-    (per==="summer"?"Only samples taken from April to September are counted. ":per==="winter"?"Only samples taken from October to March are counted. Each winter runs from October to the following March, so 2024–25 means October 2024 to March 2025. ":"")+
-    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>Swimmable</b>, the percentage under each year, is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. <b>Average</b> is the mean of the yearly figures shown, so each year counts equally. Data runs to "+fmtShort(lastDay)+".";
-  $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
-  const src=B[per];
-  if(NS){ const tot=years.reduce((a,y)=>{a.rm+=src[y].rm;a.unk+=src[y].unk;a.n+=src[y].n;return a;},{rm:0,unk:0,n:0});
-    $("lv-note").innerHTML+=' <br><b>Spill filter on:</b> left out '+tot.rm+' sample'+(tot.rm===1?'':'s')+' taken when an overflow within '+S.lvKm+' km of the site spilled on the sampling day or the '+S.lvDays+' days before'+(tot.unk?', and '+tot.unk+' with no spill records to check (spill data covers January 2020 to June 2026)':'')+'. '+tot.n+' samples remain.'; }
+    const hit=ps.filter(q=>s.mi>=q.f && s.mi<=q.t); if(!hit.length) return;
+    if(NS){ const h=spillWin(s.s,s.d,S.lvDays,S.lvKm); if(h==null){ hit.forEach(q=>q.o.unk++); return; } if(h>0){ hit.forEach(q=>q.o.rm++); return; } }
+    const st=status(p,s[pi]); hit.forEach(q=>{ q.o[st]++; q.o.n++; }); });
+  const lastM=mYear(LAST_DAY_DATE)*12+mMon(LAST_DAY_DATE);
   const pct=S.lvUnit==="pct";
-  const ys=years.filter(y=>src[y].n>0);
-  const xl=y=> per==="winter"?winterLabel(y):String(y);
+  const u=UNIT[S.pU];
+  const windowText=periodLabel(S.pFrom,S.pTo)+(S.pN?" and the "+(S.pN===1?"previous "+u.one:S.pN+" previous "+u.many):"");
+  $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into "+(()=>{ const bt=bandText(m.thr); return BANDS.map(([k,n])=>"<b>"+n+"</b> ("+bt[k]+")").join(", "); })()+" "+esc(m.u)+", using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. These are single samples, while official classifications use percentiles over four seasons, so treat the bands as a guide. "+
+    "Showing "+esc(windowText)+". Each comparison bar covers the same months shifted back by one "+u.one+" at a time. "+
+    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>Swimmable</b>, the percentage under each bar, is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. <b>Average</b> is the mean of the period figures shown, so each period counts equally. Data runs to "+fmtShort(LAST_DAY)+".";
+  $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
+  if(NS){ const tot=ps.reduce((a,q)=>{a.rm+=q.o.rm;a.unk+=q.o.unk;a.n+=q.o.n;return a;},{rm:0,unk:0,n:0});
+    $("lv-note").innerHTML+=' <br><b>Spill filter on:</b> left out '+tot.rm+' sample'+(tot.rm===1?'':'s')+' taken when an overflow within '+S.lvKm+' km of the site spilled on the sampling day or the '+S.lvDays+' days before'+(tot.unk?', and '+tot.unk+' with no spill records to check (spill data covers January 2020 to June 2026)':'')+'. '+tot.n+' samples remain.'; }
+  const shown=ps.filter(q=>q.o.n>0);
   const LV=BANDS.map(([k,n])=>[k,n,C.band[k]]);
   // Swimmable = every band except Poor (Excellent + Good + Sufficient).
   const swimPct=o=>o.n?Math.round(100*(o.n-o.poor)/o.n):0;
-  $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+SEASONS[per].title+(NS?", no recent spills":"");
-  if(!ys.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites, years and season.");
+  const monthsPart = mMon(S.pFrom)===0&&S.pTo===S.pFrom+11 ? "full year" : MON[mMon(S.pFrom)]+" – "+MON[mMon(S.pTo)];
+  const titleWin = S.pU==="y" && S.pN && shown.length>1 ? monthsPart+", "+periodTick(shown[0].f,shown[0].t,false)+" to "+periodTick(shown[shown.length-1].f,shown[shown.length-1].t,false)
+    : periodLabel(S.pFrom,S.pTo)+(S.pN?" and "+S.pN+" previous "+(S.pN===1?u.one:u.many):"");
+  $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+titleWin+(NS?", no recent spills":"");
+  if(!shown.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites and period.");
   else {
-    // "Average" is the mean of the yearly figures shown, so each year counts equally.
+    // "Average" is the mean of the period figures shown, so each period counts equally.
     const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
-    const share=(y,k)=>100*src[y][k]/src[y].n;
-    const avgVal=k=>mean(ys.map(y=>pct?share(y,k):src[y][k]));
-    const avgSwim=Math.round(mean(ys.map(y=>swimPct(src[y]))));
-    const cats=ys.map(xl).concat(["Average"]);
-    // Narrow screens get short tick labels ('20, 20/21, Avg) so they don't run together.
+    const share=(q,k)=>100*q.o[k]/q.o.n;
+    const avgVal=k=>mean(shown.map(q=>pct?share(q,k):q.o[k]));
+    const avgSwim=Math.round(mean(shown.map(q=>swimPct(q.o))));
     const narrow=$("tr-levels").clientWidth<560;
-    const short=y=> per==="winter"?String(y).slice(2)+"/"+String(y+1).slice(2):"’"+String(y).slice(2);
+    const withAvg=shown.length>1;
+    const cats=shown.map(q=>periodLabel(q.f,q.t)).concat(withAvg?["Average"]:[]);
+    const twoLine=S.pU!=="y";
+    // With lots of bars there is no room for a swimmable figure under each one; it stays in the table and on hover.
+    const dense=shown.length>12;
     newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:cats,
-        y:ys.map(y=>pct?share(y,k):src[y][k]).concat([avgVal(k)]),
-        customdata:ys.map(y=>[src[y][k]+" of "+src[y].n+" samples",Math.round(share(y,k))]).concat([["average of "+ys.length+" year"+(ys.length===1?"":"s"),Math.round(mean(ys.map(y=>share(y,k))))]]),
-        marker:{color:col,line:{color:C.surface,width:1},opacity:ys.map(()=>1).concat([.85])},
-        hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} (%{customdata[1]}%)<extra></extra>"})),
-      baseLayout({margin:{l:84,r:narrow?6:16,t:14,b:56},barmode:"stack",bargap:narrow?.18:.25,
-        xaxis:ax({type:"category",tickvals:cats,ticktext:ys.map(y=>(narrow?short(y):xl(y))+"<br><b>"+swimPct(src[y])+"%</b>").concat(["<b>"+(narrow?"Avg":"Average")+"</b><br><b>"+avgSwim+"%</b>"]),tickangle:0,tickfont:{color:C.ink2,size:narrow?10:11}}),
+        y:shown.map(q=>pct?share(q,k):q.o[k]).concat(withAvg?[avgVal(k)]:[]),
+        customdata:shown.map(q=>[q.o[k]+" of "+q.o.n+" samples",Math.round(share(q,k)),swimPct(q.o)]).concat(withAvg?[["average of "+shown.length+" periods",Math.round(mean(shown.map(q=>share(q,k)))),avgSwim]]:[]),
+        marker:{color:col,line:{color:C.surface,width:1},opacity:shown.map(()=>1).concat(withAvg?[.85]:[])},
+        hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} (%{customdata[1]}%)<br>Swimmable: %{customdata[2]}%<extra></extra>"})),
+      baseLayout({margin:{l:84,r:narrow?6:16,t:14,b:dense?50:twoLine?70:56},barmode:"stack",bargap:narrow?.18:.25,
+        xaxis:ax({type:"category",tickvals:cats,ticktext:dense?shown.map(q=>periodTick(q.f,q.t,true).replace("<br>"," ")).concat(withAvg?["<b>Avg</b>"]:[]):shown.map(q=>periodTick(q.f,q.t,narrow)+"<br><b>"+swimPct(q.o)+"%</b>").concat(withAvg?["<b>"+(narrow?"Avg":"Average")+"</b>"+(twoLine?"<br> ":"")+"<br><b>"+avgSwim+"%</b>"]:[]),tickangle:dense?-90:0,tickfont:{color:C.ink2,size:narrow?10:11}}),
         yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),
-        shapes:[{type:"line",xref:"x",x0:ys.length-.5,x1:ys.length-.5,yref:"paper",y0:0,y1:1,line:{color:C.line,width:1.5,dash:"dot"}}],
-        annotations:[{xref:"paper",x:0,xanchor:"right",xshift:-6,yref:"paper",y:0,yanchor:"middle",yshift:-29,text:"<b>Swimmable</b>",showarrow:false,font:{size:narrow?10:11,color:C.ink2}}],
-        legend:{orientation:"h",x:.5,xanchor:"center",y:-.2,yanchor:"top",traceorder:"normal",font:{size:12}}}));
+        shapes:withAvg?[{type:"line",xref:"x",x0:shown.length-.5,x1:shown.length-.5,yref:"paper",y0:0,y1:1,line:{color:C.line,width:1.5,dash:"dot"}}]:[],
+        annotations:dense?[]:[{xref:"paper",x:0,xanchor:"right",xshift:-6,yref:"paper",y:0,yanchor:"middle",yshift:twoLine?-43:-29,text:"<b>Swimmable</b>",showarrow:false,font:{size:narrow?10:11,color:C.ink2}}],
+        legend:{orientation:"h",x:.5,xanchor:"center",y:twoLine?-.26:-.2,yanchor:"top",traceorder:"normal",font:{size:12}}}));
   }
   const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
-  const BL='border-left:2px solid var(--line)';
   const cells=o=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–";
-    return BANDS.map(([k])=>k).map((k,i)=>'<td class="r"'+(i===0?' style="'+BL+'"':'')+'>'+(o.n?'<b>'+pc(k)+'</b> <span style="color:var(--muted);font-size:.75rem">('+o[k]+')</span>':'–')+'</td>').join("")+
+    return BANDS.map(([k])=>'<td class="r">'+(o.n?'<b>'+pc(k)+'</b> <span style="color:var(--muted);font-size:.75rem">('+o[k]+')</span>':'–')+'</td>').join("")+
+      '<td class="r"><b>'+(o.n?swimPct(o)+'%':'–')+'</b></td>'+
       '<td class="r" style="color:var(--ink-2)">'+(o.n||o.rm||o.unk?o.n:'–')+(NS&&(o.rm||o.unk)?' <span style="color:var(--muted);font-size:.75rem" title="'+o.rm+' after spills, '+o.unk+' with no spill data">of '+(o.n+o.rm+o.unk)+'</span>':'')+'</td>'; };
-  const sum=o=>years.reduce((a,y)=>{ ["exc","good","suff","poor","n","rm","unk"].forEach(k=>a[k]+=o[y][k]); return a; },blank());
-  const order=[per].concat(["year","summer","winter"].filter(z=>z!==per));
-  const head=z=>'<th colspan="5" style="text-align:center;'+BL+(z===per?';color:var(--ink)':'')+'">'+SEASONS[z].label+(z==="winter"?'<br><span style="font-weight:400;text-transform:none;letter-spacing:0">row 2024 = Oct 2024 – Mar 2025</span>':'')+'</th>';
-  $("lvtable").innerHTML='<thead><tr><th></th>'+order.map(head).join("")+'</tr>'+
-    '<tr><th>Year</th>'+order.map(()=>BANDS.map(([k,n],i)=>'<th class="r"'+(i===0?' style="'+BL+'"':'')+'>'+dot(C.band[k])+n+'</th>').join("")+'<th class="r">Samples</th>').join("")+'</tr></thead><tbody>'+
-    years.slice().reverse().map(y=>'<tr><td class="num"><b>'+y+'</b>'+(y===lastY?' <span class="tag">to '+esc(fmtShort(lastDay).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+order.map(z=>cells(B[z][y])).join("")+'</tr>').join("")+
-    '<tr style="background:var(--surface-2)"><td><b>All years</b></td>'+order.map(z=>cells(sum(B[z]))).join("")+'</tr></tbody>';
+  const meanRow=()=>{ const mean=a=>a.reduce((x,y)=>x+y,0)/a.length; if(shown.length<2) return '';
+    const sh=k=>Math.round(mean(shown.map(q=>100*q.o[k]/q.o.n)));
+    return '<tr style="background:var(--surface-2)"><td><b>Average</b></td>'+BANDS.map(([k])=>'<td class="r"><b>'+sh(k)+'%</b></td>').join("")+'<td class="r"><b>'+Math.round(mean(shown.map(q=>swimPct(q.o))))+'%</b></td><td class="r" style="color:var(--ink-2)">'+shown.reduce((a,q)=>a+q.o.n,0)+'</td></tr>'; };
+  $("lvtable").innerHTML='<thead><tr><th>Period</th>'+BANDS.map(([k,n])=>'<th class="r">'+dot(C.band[k])+n+'</th>').join("")+'<th class="r">Swimmable</th><th class="r">Samples</th></tr></thead><tbody>'+
+    ps.slice().reverse().map(q=>'<tr><td class="num"><b>'+esc(periodLabel(q.f,q.t))+'</b>'+(q.t>lastM&&q.f<=lastM?' <span class="tag">to '+esc(fmtShort(LAST_DAY).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+cells(q.o)+'</tr>').join("")+
+    meanRow()+'</tbody>';
 }
 function renderTrends(){
   const p=S.param, m=META[p]; const f=filtered();
@@ -1047,8 +1113,10 @@ function setTab(t){
   S.tab=t; if(!FOCUS) try{localStorage.setItem("wq-tab",t);}catch(e){}
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
   TABS.forEach(k=>$("p-"+k).hidden = k!==t);
+  showPeriodField();
   renderTab(); renderMap();
 }
+function showPeriodField(){ const lv=S.tab==="levels"; $("periodfield").hidden=!lv; $("yearsfield").hidden=lv; if(lv){ syncPeriodYears(); $("y0").value=S.y0; $("y1").value=S.y1; } }
 function renderTab(){
   try{
     ({timeline:renderTimeline,trends:renderTrends,drivers:renderDrivers,events:renderEvents,levels:renderLevels,day:renderDay,table:renderTable})[S.tab]();
@@ -1067,10 +1135,11 @@ function applyFocus(){
   [document.querySelector(".tabs"), $("daypick").closest(".field"), $("winchips").closest(".field"), $("radchips").closest(".field"), $("sitelist").nextElementSibling]
     .forEach(el=>{ if(el) el.hidden=true; });
 }
-buildControls(); if(FOCUS) applyFocus(); initMap();
+buildControls(); initPeriod(); if(FOCUS) applyFocus(); initMap();
 if(!TABS.includes(S.tab)) S.tab="timeline";
 document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
 TABS.forEach(k=>$("p-"+k).hidden = k!==S.tab);
+showPeriodField();
 update();
 const rethem=()=>{ readTokens(); update(); };
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",rethem);
