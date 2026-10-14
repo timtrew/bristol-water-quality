@@ -781,7 +781,7 @@ function renderLevels(){
   const per=S.lvPer;
   $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into "+(()=>{ const bt=bandText(m.thr); return BANDS.map(([k,n])=>"<b>"+n+"</b> ("+bt[k]+")").join(", "); })()+" "+esc(m.u)+", using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. These are single samples, while official classifications use percentiles over four seasons, so treat the bands as a guide. "+
     (per==="summer"?"Only samples taken from April to September are counted. ":per==="winter"?"Only samples taken from October to March are counted. Each winter runs from October to the following March, so 2024–25 means October 2024 to March 2025. ":"")+
-    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>Percentage swimmable</b>, shown under each year, is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. Data runs to "+fmtShort(lastDay)+".";
+    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>Swimmable</b>, the percentage under each year, is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. <b>Average</b> is the mean of the yearly figures shown, so each year counts equally. Data runs to "+fmtShort(lastDay)+".";
   $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
   const src=B[per];
   if(NS){ const tot=years.reduce((a,y)=>{a.rm+=src[y].rm;a.unk+=src[y].unk;a.n+=src[y].n;return a;},{rm:0,unk:0,n:0});
@@ -794,11 +794,28 @@ function renderLevels(){
   const swimPct=o=>o.n?Math.round(100*(o.n-o.poor)/o.n):0;
   $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+SEASONS[per].title+(NS?", no recent spills":"");
   if(!ys.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites, years and season.");
-  else newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:ys.map(xl),y:ys.map(y=>pct?100*src[y][k]/src[y].n:src[y][k]),
-      customdata:ys.map(y=>[src[y][k],src[y].n,Math.round(100*src[y][k]/src[y].n)]),marker:{color:col,line:{color:C.surface,width:1}},
-      hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} of %{customdata[1]} samples (%{customdata[2]}%)<extra></extra>"})),
-    baseLayout({margin:{l:62,r:16,t:14,b:90},barmode:"stack",bargap:.25,
-      xaxis:ax({type:"category",tickvals:ys.map(xl),ticktext:ys.map(y=>xl(y)+"<br><b>"+swimPct(src[y])+"%</b>"),tickangle:0,tickfont:{color:C.ink2,size:11},title:{text:"<b>Percentage swimmable</b><br>(Excellent, Good or Sufficient)",font:{size:12,color:C.ink2},standoff:8}}),yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),legend:{orientation:"h",y:-0.3,yanchor:"top",x:0,traceorder:"normal"}}));
+  else {
+    // "Average" is the mean of the yearly figures shown, so each year counts equally.
+    const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+    const share=(y,k)=>100*src[y][k]/src[y].n;
+    const avgVal=k=>mean(ys.map(y=>pct?share(y,k):src[y][k]));
+    const avgSwim=Math.round(mean(ys.map(y=>swimPct(src[y]))));
+    const cats=ys.map(xl).concat(["Average"]);
+    // Narrow screens get short tick labels ('20, 20/21, Avg) so they don't run together.
+    const narrow=$("tr-levels").clientWidth<560;
+    const short=y=> per==="winter"?String(y).slice(2)+"/"+String(y+1).slice(2):"’"+String(y).slice(2);
+    newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:cats,
+        y:ys.map(y=>pct?share(y,k):src[y][k]).concat([avgVal(k)]),
+        customdata:ys.map(y=>[src[y][k]+" of "+src[y].n+" samples",Math.round(share(y,k))]).concat([["average of "+ys.length+" year"+(ys.length===1?"":"s"),Math.round(mean(ys.map(y=>share(y,k))))]]),
+        marker:{color:col,line:{color:C.surface,width:1},opacity:ys.map(()=>1).concat([.85])},
+        hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} (%{customdata[1]}%)<extra></extra>"})),
+      baseLayout({margin:{l:84,r:narrow?6:16,t:14,b:56},barmode:"stack",bargap:narrow?.18:.25,
+        xaxis:ax({type:"category",tickvals:cats,ticktext:ys.map(y=>(narrow?short(y):xl(y))+"<br><b>"+swimPct(src[y])+"%</b>").concat(["<b>"+(narrow?"Avg":"Average")+"</b><br><b>"+avgSwim+"%</b>"]),tickangle:0,tickfont:{color:C.ink2,size:narrow?10:11}}),
+        yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),
+        shapes:[{type:"line",xref:"x",x0:ys.length-.5,x1:ys.length-.5,yref:"paper",y0:0,y1:1,line:{color:C.line,width:1.5,dash:"dot"}}],
+        annotations:[{xref:"paper",x:0,xanchor:"right",xshift:-6,yref:"paper",y:0,yanchor:"middle",yshift:-29,text:"<b>Swimmable</b>",showarrow:false,font:{size:narrow?10:11,color:C.ink2}}],
+        legend:{orientation:"h",x:.5,xanchor:"center",y:-.2,yanchor:"top",traceorder:"normal",font:{size:12}}}));
+  }
   const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
   const BL='border-left:2px solid var(--line)';
   const cells=o=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–";
