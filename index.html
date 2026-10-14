@@ -933,7 +933,7 @@ footer a{color:var(--accent)}
           <span>within</span><select id="lvkm" style="width:auto" aria-label="Distance to overflow"><option value="1">1 km</option><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select>
           <span>on the sampling day or the</span><select id="lvdays" style="width:auto" aria-label="Days before sampling"><option>1</option><option>2</option><option>3</option><option selected>5</option><option>7</option></select><span>days before</span>
         </div>
-        <div id="tr-levels" class="plot" style="height:380px"></div>
+        <div id="tr-levels" class="plot" style="height:420px"></div>
         <div class="tablewrap" style="margin-top:12px"><table id="lvtable"></table></div>
       </div>
       <div class="panel" id="p-trends" hidden>
@@ -1449,7 +1449,7 @@ function renderLevels(){
   const per=S.lvPer;
   $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into "+(()=>{ const bt=bandText(m.thr); return BANDS.map(([k,n])=>"<b>"+n+"</b> ("+bt[k]+")").join(", "); })()+" "+esc(m.u)+", using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. These are single samples, while official classifications use percentiles over four seasons, so treat the bands as a guide. "+
     (per==="summer"?"Only samples taken from April to September are counted. ":per==="winter"?"Only samples taken from October to March are counted. Each winter runs from October to the following March, so 2024–25 means October 2024 to March 2025. ":"")+
-    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. Data runs to "+fmtShort(lastDay)+".";
+    "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>% swimmable</b> under each year is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. Data runs to "+fmtShort(lastDay)+".";
   $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
   const src=B[per];
   if(NS){ const tot=years.reduce((a,y)=>{a.rm+=src[y].rm;a.unk+=src[y].unk;a.n+=src[y].n;return a;},{rm:0,unk:0,n:0});
@@ -1458,13 +1458,16 @@ function renderLevels(){
   const ys=years.filter(y=>src[y].n>0);
   const xl=y=> per==="winter"?winterLabel(y):String(y);
   const LV=BANDS.map(([k,n])=>[k,n,C.band[k]]);
+  // Swimmable = every band except Poor (Excellent + Good + Sufficient).
+  const swimPct=o=>o.n?Math.round(100*(o.n-o.poor)/o.n):0;
+  const narrow=$("tr-levels").clientWidth<600;
   $("lv-title").textContent=(pct?"Share":"Number")+" of samples by level, "+SEASONS[per].title+(NS?", no recent spills":"");
   if(!ys.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites, years and season.");
   else newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:ys.map(xl),y:ys.map(y=>pct?100*src[y][k]/src[y].n:src[y][k]),
       customdata:ys.map(y=>[src[y][k],src[y].n,Math.round(100*src[y][k]/src[y].n)]),marker:{color:col,line:{color:C.surface,width:1}},
       hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} of %{customdata[1]} samples (%{customdata[2]}%)<extra></extra>"})),
-    baseLayout({margin:{l:62,r:16,t:14,b:44},barmode:"stack",bargap:.25,
-      xaxis:ax({type:"category"}),yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),legend:{orientation:"h",y:-0.12,yanchor:"top",x:0,traceorder:"normal"}}));
+    baseLayout({margin:{l:62,r:16,t:14,b:90},barmode:"stack",bargap:.25,
+      xaxis:ax({type:"category",tickvals:ys.map(xl),ticktext:ys.map(y=>xl(y)+"<br><b>"+swimPct(src[y])+"%</b>"+(narrow?"":"<br>swimmable")),tickangle:0,tickfont:{color:C.ink2,size:11},title:narrow?{text:"Year, and % swimmable below it",font:{size:11,color:C.muted}}:undefined}),yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),legend:{orientation:"h",y:-0.3,yanchor:"top",x:0,traceorder:"normal"}}));
   const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
   const BL='border-left:2px solid var(--line)';
   const cells=o=>{ const pc=k=>o.n?Math.round(100*o[k]/o.n)+"%":"–";
