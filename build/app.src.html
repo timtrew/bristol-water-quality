@@ -142,8 +142,8 @@ tbody tr:hover{background:var(--accent-soft)}
 .daycards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;margin-bottom:12px}
 .ovlist{margin:6px 0 0;padding:0;list-style:none;font-size:.84rem;max-height:220px;overflow:auto}
 .ovlist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}
-.seg{display:inline-flex;flex-wrap:nowrap;white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--bg);gap:2px}
-.seg-b{border:0;background:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--ink-2)}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--bg);gap:2px}
+.seg-b{white-space:nowrap;border:0;background:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--ink-2)}
 .seg-b[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .seg-b:disabled{opacity:.45;cursor:default}
 .info{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--accent);background:none;color:var(--accent);font:600 11px/1 var(--f-body);font-style:italic;cursor:pointer;padding:0;display:inline-grid;place-items:center}
@@ -203,6 +203,14 @@ footer a{color:var(--accent)}
       <div class="infopop" id="stdhint" hidden></div>
     </div>
     <div class="field" id="periodfield" hidden>
+      <span class="lab">Compare by</span>
+      <div class="seg" role="group" aria-label="Compare by" style="align-self:flex-start"><button type="button" class="seg-b" data-lvmode="range">Date range</button><button type="button" class="seg-b" data-lvmode="month">Month of year</button></div>
+      <div id="monthbox" class="field" hidden style="margin-top:6px">
+        <label class="lab" for="moyears">Years to combine</label>
+        <select id="moyears"></select>
+        <p class="hint">Each month's bar pools that month's samples from every year chosen.</p>
+      </div>
+      <div id="rangebox" class="field" style="margin-top:6px">
       <span class="lab">Date range</span>
       <div class="drow"><input type="date" id="pdf" aria-label="From date"><span>to</span><input type="date" id="pdt" aria-label="To date"></div>
       <div class="chips">
@@ -214,6 +222,7 @@ footer a{color:var(--accent)}
       <select id="pcn"></select>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="hint" style="margin:0">Previous</span>
         <div class="seg" role="group" aria-label="Previous"><button type="button" class="seg-b" data-pu="m">Month</button><button type="button" class="seg-b" data-pu="q">Quarter</button><button type="button" class="seg-b" data-pu="y">Year</button></div></div>
+      </div>
     </div>
     <div class="field" id="yearsfield">
       <span class="lab">Years</span>
@@ -462,7 +471,7 @@ function spillWin(si,d,n,km){ if (d-n<CSO0 || d>CSO1) return null; let m=0; for(
 const TABS = ["timeline","trends","levels","drivers","events","day","table"];
 const DEFAULT_SITES = ["d1","d5","d4","d18"];
 const S = { param:"E_Coli_as_CFU", y0:2020, y1:2026, sites:new Set(SITES.filter(s=>DEFAULT_SITES.includes(s.id)).map(s=>s.i)),
-  std:"inland", win:2, km:2, tab:"timeline", showEv:true, simple:false, dFrom:0, dTo:0, pN:0, pU:"y", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
+  std:"inland", win:2, km:2, tab:"timeline", showEv:true, simple:false, dFrom:0, dTo:0, pN:0, pU:"y", lvMode:"range", moN:7, moSeason:"year", lvUnit:"pct", lvNoSpill:false, lvKm:5, lvDays:5, cmp:new Set(), evSeries:"Bristol Harbour Festival", evW:14, evSel:null, day:null, split:false, tq:"", tlimit:250, siteq:"" };
 try { const sd = localStorage.getItem("wq-std"); if (sd && sd in STANDARDS) S.std = sd; } catch(e){}
 applyStandard();
 try { const t = localStorage.getItem("wq-tab"); if (t) S.tab = t; S.simple = localStorage.getItem("wq-view")==="simple"; JSON.parse(localStorage.getItem("wq-cmp")||"[]").forEach(k=>{ if(k>=1&&k<=5) S.cmp.add(k); }); } catch(e){}
@@ -671,7 +680,7 @@ function renderMap(){
   if(pieMode) legend = BANDS.map(([k,n])=>'<span><i style="background:'+C.band[k]+'"></i>'+n+'</span>').join("");
   legend += '<span><i style="background:'+C.nodata+'"></i>No samples</span>'+(map.hasLayer(ovLayer)?'<span><i class="sq" style="background:'+C.spill+'"></i>Storm overflow (size = spill hours)</span>':'');
   $("legend").innerHTML = legend;
-  $("maptitle").textContent = pieMode ? "Percentage swimmable by site, "+periodLabel(S.dFrom,S.dTo) : dayMode ? META[p].l+" on "+fmtShort(S.day) : "Median "+META[p].l+", "+S.y0+(S.y1!==S.y0?"–"+S.y1:"");
+  $("maptitle").textContent = pieMode ? "Percentage swimmable by site, "+pieWindow().label : dayMode ? META[p].l+" on "+fmtShort(S.day) : "Median "+META[p].l+", "+S.y0+(S.y1!==S.y0?"–"+S.y1:"");
   $("mapsub").textContent = pieMode ? "Each pie shows the bathing water bands at that site, with % swimmable in the middle. Click a pie to expand it." : "Circles are sampling sites. A dark ring marks a selected site.";
   // radius rings
   if (S.km!=="all") S.sites.forEach(i=>{ const s=SITES[i]; L.circle([s.lat,s.lon],{radius:S.km*1000,className:"rad",interactive:false}).addTo(radLayer); });
@@ -828,7 +837,13 @@ function levelPeriods(){
   for(let k=S.pN;k>=0;k--){ const f=shiftBack(S.dFrom,k*step,false), t=shiftBack(S.dTo,k*step,true); if(ymd(t)[0]<FIRST_YEAR) continue; out.push({f,t,k}); }
   return out;
 }
+// Month of year: the latest N calendar years, pooled month by month.
+const SEASON_LIST = {year:[0,1,2,3,4,5,6,7,8,9,10,11], summer:[3,4,5,6,7,8], winter:[9,10,11,0,1,2]};
+const SEASON_NAME = {year:"Jan – Dec", summer:"Apr – Sep", winter:"Oct – Mar"};
+const moFirstYear = () => LAST_YEAR-S.moN+1;
+const moYearsText = () => S.moN===1 ? String(LAST_YEAR) : moFirstYear()+" to "+LAST_YEAR;
 function syncPeriodYears(){
+  if(S.lvMode==="month"){ S.y0=moFirstYear(); S.y1=LAST_YEAR; return; }
   const ps=levelPeriods();
   S.y0=Math.max(FIRST_YEAR, ymd(ps.length?ps[0].f:S.dFrom)[0]);
   S.y1=Math.min(LAST_YEAR, Math.max(S.y0, ymd(S.dTo)[0]));
@@ -855,18 +870,28 @@ function initPeriod(){
       S.dFrom=dayOf(y,f,1); S.dTo=dayOf(y,t,monthEnd(y,t)); }
     periodChanged(); });
   document.querySelectorAll("[data-pp]").forEach(b=>b.onclick=()=>{ applyPreset(b.dataset.pp); periodChanged(); });
-  document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{ const r=seasonRange(b.dataset.lvper, ymd(S.dTo)[0]); S.dFrom=r[0]; S.dTo=r[1]; periodChanged(); });
+  document.querySelectorAll("[data-lvper]").forEach(b=>b.onclick=()=>{
+    if(S.lvMode==="month"){ S.moSeason=b.dataset.lvper; periodChanged(); return; }
+    const r=seasonRange(b.dataset.lvper, ymd(S.dTo)[0]); S.dFrom=r[0]; S.dTo=r[1]; periodChanged(); });
+  document.querySelectorAll("[data-lvmode]").forEach(b=>b.onclick=()=>{ S.lvMode=b.dataset.lvmode; periodChanged(); });
+  $("moyears").innerHTML=Array.from({length:LAST_YEAR-FIRST_YEAR+1},(_,i)=>{ const n=i+1, f=LAST_YEAR-n+1; return '<option value="'+n+'">'+(n===1?'1 year ('+LAST_YEAR+')':n+' years ('+f+' – '+LAST_YEAR+')')+'</option>'; }).join("");
+  $("moyears").onchange=()=>{ S.moN=+$("moyears").value; periodChanged(); };
+  S.moN=LAST_YEAR-2020+1;
   applyPreset("current"); syncPeriodYears();
 }
 function periodChanged(){ syncPeriodYears(); $("y0").value=S.y0; $("y1").value=S.y1; update(); }
 function syncPeriodControls(){
+  const MM=S.lvMode==="month";
+  document.querySelectorAll("[data-lvmode]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvmode===S.lvMode)));
+  $("monthbox").hidden=!MM; $("rangebox").hidden=MM; $("moyears").value=String(S.moN);
   $("pdf").value=iso(S.dFrom); $("pdt").value=iso(S.dTo);
   const u=UNIT[S.pU]; const opts=[0,1,2,3,4,5,6]; if(S.pN>6) opts.push(S.pN);
   $("pcn").innerHTML=opts.map(i=>'<option value="'+i+'">'+(i===0?"None":i+" "+(i===1?u.one:u.many))+'</option>').join("");
   $("pcn").value=String(S.pN);
   document.querySelectorAll("[data-pu]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.pu===S.pU)));
   Object.keys(PRESETS).forEach(k=>{ const p=PRESETS[k](); const b=document.querySelector('[data-pp="'+k+'"]'); if(b) b.setAttribute("aria-pressed",String(p.f===S.dFrom&&p.t===S.dTo&&p.n===S.pN&&p.u===S.pU)); });
-  document.querySelectorAll("[data-lvper]").forEach(b=>{ const r=seasonRange(b.dataset.lvper, ymd(S.dTo)[0]); b.setAttribute("aria-pressed",String(S.dFrom===r[0]&&S.dTo===r[1])); });
+  document.querySelectorAll("[data-lvper]").forEach(b=>{ if(MM){ b.setAttribute("aria-pressed",String(b.dataset.lvper===S.moSeason)); return; }
+    const r=seasonRange(b.dataset.lvper, ymd(S.dTo)[0]); b.setAttribute("aria-pressed",String(S.dFrom===r[0]&&S.dTo===r[1])); });
 }
 // Swimmable = every band except Poor (Excellent + Good + Sufficient).
 const swimPct=o=>o.n?Math.round(100*(o.n-o.poor)/o.n):0;
@@ -887,20 +912,29 @@ function renderLevels(){
   syncPeriodControls();
   document.querySelectorAll("[data-lvunit]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lvunit===S.lvUnit)));
   if(!m.thr){ $("lv-title").textContent=""; $("lv-sub").textContent=""; $("lv-note").textContent="Levels are available for E. coli and intestinal enterococci. Choose one of those under Measurement."; emptyPlot("tr-levels","Choose E. coli or intestinal enterococci to see the bathing water bands."); $("lvtable").innerHTML=""; return; }
-  const ps=levelPeriods(); ps.forEach(q=>q.o=blankBands());
+  const MM=S.lvMode==="month";
+  let ps;
+  if(MM){
+    ps=SEASON_LIST[S.moSeason].map(mo=>({mo, label:MON[mo], tick:MON[mo], o:blankBands()}));
+    const byMo={}; ps.forEach(q=>byMo[q.mo]=q); const y0=moFirstYear();
+    SAMPLES.forEach(s=>{ if(s[pi]===undefined || !S.sites.has(s.s) || s.y<y0) return; const q=byMo[s.mi%12]; if(q) addSample(q.o,s,p); });
+  } else {
+    ps=levelPeriods(); ps.forEach(q=>q.o=blankBands());
+    SAMPLES.forEach(s=>{ if(s[pi]===undefined || !S.sites.has(s.s)) return; ps.forEach(q=>{ if(s.d>=q.f && s.d<=q.t) addSample(q.o,s,p); }); });
+  }
+  const labelOf=q=>q.label||periodLabel(q.f,q.t), tickOf=(q,narrow)=>q.tick||periodTick(q.f,q.t,narrow);
   const NS=S.lvNoSpill;
-  SAMPLES.forEach(s=>{ if(s[pi]===undefined || !S.sites.has(s.s)) return; ps.forEach(q=>{ if(s.d>=q.f && s.d<=q.t) addSample(q.o,s,p); }); });
   const pct=S.lvUnit==="pct";
   $("lv-note").innerHTML="Samples of "+esc(m.l)+" at the selected sites, sorted into "+(()=>{ const bt=bandText(m.thr); return BANDS.map(([k,n])=>"<b>"+n+"</b> ("+bt[k]+")").join(", "); })()+" "+esc(m.u)+", using the "+STANDARDS[S.std].name.toLowerCase()+" bathing water limits. These are single samples, while official classifications use percentiles over four seasons, so treat the bands as a guide. "+
-    "Each comparison bar covers the same dates moved back by one "+UNIT[S.pU].one+" at a time. "+
+    (MM?"Each month's bar pools every sample taken in that month from "+moYearsText()+", so busier years count for more. ":"Each comparison bar covers the same dates moved back by one "+UNIT[S.pU].one+" at a time. ")+
     "Bars and table show the share of each period's samples, so periods with more or fewer samples compare fairly. Sample counts are in brackets. <b>Swimmable</b>, the percentage under each bar, is the share of samples that are Excellent, Good or Sufficient, in other words not Poor. <b>Average</b> is the mean of the period figures shown, so each period counts equally. Data runs to "+fmtShort(LAST_DAY)+".";
   $("lvnospill").checked=NS; $("lvkm").value=String(S.lvKm); $("lvdays").value=String(S.lvDays);
   if(NS){ const tot=ps.reduce((a,q)=>{a.rm+=q.o.rm;a.unk+=q.o.unk;a.n+=q.o.n;return a;},{rm:0,unk:0,n:0});
     $("lv-note").innerHTML+=' <br><b>Spill filter on:</b> left out '+tot.rm+' sample'+(tot.rm===1?'':'s')+' taken when an overflow within '+S.lvKm+' km of the site spilled on the sampling day or the '+S.lvDays+' days before'+(tot.unk?', and '+tot.unk+' with no spill records to check (spill data covers January 2020 to June 2026)':'')+'. '+tot.n+' samples remain.'; }
   const shown=ps.filter(q=>q.o.n>0);
   const LV=BANDS.map(([k,n])=>[k,n,C.band[k]]);
-  $("lv-title").textContent=(pct?"Percentage":"Number")+" of samples in each bathing water band";
-  $("lv-sub").textContent=describeRange()+(NS?". Leaving out samples taken after nearby spills.":".");
+  $("lv-title").textContent=(pct?"Percentage":"Number")+" of samples in each bathing water band"+(MM?", by month":"");
+  $("lv-sub").textContent=(MM?SEASON_NAME[S.moSeason]+", each month combining "+moYearsText()+(S.moN>1?" ("+S.moN+" years)":""):describeRange())+(NS?". Leaving out samples taken after nearby spills.":".");
   if(!shown.length) emptyPlot("tr-levels",NS?"No samples left after removing those near recent spills. Spill records only cover January 2020 to June 2026.":"No samples for the selected sites and dates.");
   else {
     // "Average" is the mean of the period figures shown, so each period counts equally.
@@ -910,20 +944,21 @@ function renderLevels(){
     const avgSwim=Math.round(mean(shown.map(q=>swimPct(q.o))));
     const narrow=$("tr-levels").clientWidth<560;
     const withAvg=shown.length>1;
-    const cats=shown.map(q=>periodLabel(q.f,q.t)).concat(withAvg?["Average"]:[]);
-    const twoLine=S.pU!=="y";
+    const cats=shown.map(labelOf).concat(withAvg?["Average"]:[]);
+    const twoLine=!MM && S.pU!=="y";
     // With lots of bars there is no room for a swimmable figure under each one; it stays in the table and on hover.
-    const dense=shown.length>12;
+    const dense=shown.length>12 && !MM;
+    const tight=narrow && shown.length>7;
     newPlot("tr-levels",LV.map(([k,name,col])=>({type:"bar",name,x:cats,
         y:shown.map(q=>pct?share(q,k):q.o[k]).concat(withAvg?[avgVal(k)]:[]),
-        customdata:shown.map(q=>[q.o[k]+" of "+q.o.n+" samples",Math.round(share(q,k)),swimPct(q.o)]).concat(withAvg?[["average of "+shown.length+" periods",Math.round(mean(shown.map(q=>share(q,k)))),avgSwim]]:[]),
+        customdata:shown.map(q=>[q.o[k]+" of "+q.o.n+" samples",Math.round(share(q,k)),swimPct(q.o)]).concat(withAvg?[["average of "+shown.length+(MM?" months":" periods"),Math.round(mean(shown.map(q=>share(q,k)))),avgSwim]]:[]),
         marker:{color:col,line:{color:C.surface,width:1},opacity:shown.map(()=>1).concat(withAvg?[.85]:[])},
         hovertemplate:"<b>%{x}</b> · "+name+"<br>%{customdata[0]} (%{customdata[1]}%)<br>Swimmable: %{customdata[2]}%<extra></extra>"})),
       baseLayout({margin:{l:84,r:narrow?6:16,t:14,b:dense?50:twoLine?70:56},barmode:"stack",bargap:shown.length===1?.6:narrow?.18:.25,
-        xaxis:ax({type:"category",tickvals:cats,ticktext:dense?shown.map(q=>periodTick(q.f,q.t,true).replace("<br>"," ")).concat(withAvg?["<b>Avg</b>"]:[]):shown.map(q=>periodTick(q.f,q.t,narrow)+"<br><b>"+swimPct(q.o)+"%</b>").concat(withAvg?["<b>"+(narrow?"Avg":"Average")+"</b>"+(twoLine?"<br> ":"")+"<br><b>"+avgSwim+"%</b>"]:[]),tickangle:dense?-90:0,tickfont:{color:C.ink2,size:narrow?10:11}}),
+        xaxis:ax({type:"category",tickvals:cats,ticktext:dense?shown.map(q=>tickOf(q,true).replace("<br>"," ")).concat(withAvg?["<b>Avg</b>"]:[]):shown.map(q=>(tight&&MM?MON[q.mo][0]:tickOf(q,narrow))+"<br><b>"+swimPct(q.o)+(tight?"":"%")+"</b>").concat(withAvg?["<b>"+(narrow?(tight?"Av":"Avg"):"Average")+"</b>"+(twoLine?"<br> ":"")+"<br><b>"+avgSwim+(tight?"":"%")+"</b>"]:[]),tickangle:dense?-90:0,tickfont:{color:C.ink2,size:tight?9:narrow?10:11}}),
         yaxis:ax({title:{text:pct?"% of samples":"Samples"},range:pct?[0,100]:undefined,rangemode:"tozero"}),
         shapes:withAvg?[{type:"line",xref:"x",x0:shown.length-.5,x1:shown.length-.5,yref:"paper",y0:0,y1:1,line:{color:C.line,width:1.5,dash:"dot"}}]:[],
-        annotations:dense?[]:[{xref:"paper",x:0,xanchor:"right",xshift:-6,yref:"paper",y:0,yanchor:"middle",yshift:twoLine?-43:-29,text:"<b>Swimmable</b>",showarrow:false,font:{size:narrow?10:11,color:C.ink2}}],
+        annotations:dense?[]:[{xref:"paper",x:0,xanchor:"right",xshift:-6,yref:"paper",y:0,yanchor:"middle",yshift:twoLine?-43:-29,text:"<b>"+(tight?"Swim %":"Swimmable")+"</b>",showarrow:false,font:{size:narrow?10:11,color:C.ink2}}],
         legend:{orientation:"h",x:.5,xanchor:"center",y:twoLine?-.26:-.2,yanchor:"top",traceorder:"normal",font:{size:12}}}));
   }
   const dot=c=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:4px"></span>';
@@ -934,8 +969,8 @@ function renderLevels(){
   const meanRow=()=>{ const mean=a=>a.reduce((x,y)=>x+y,0)/a.length; if(shown.length<2) return '';
     const sh=k=>Math.round(mean(shown.map(q=>100*q.o[k]/q.o.n)));
     return '<tr style="background:var(--surface-2)"><td><b>Average</b></td>'+BANDS.map(([k])=>'<td class="r"><b>'+sh(k)+'%</b></td>').join("")+'<td class="r"><b>'+Math.round(mean(shown.map(q=>swimPct(q.o))))+'%</b></td><td class="r" style="color:var(--ink-2)">'+shown.reduce((a,q)=>a+q.o.n,0)+'</td></tr>'; };
-  $("lvtable").innerHTML='<thead><tr><th>Period</th>'+BANDS.map(([k,n])=>'<th class="r">'+dot(C.band[k])+n+'</th>').join("")+'<th class="r">Swimmable</th><th class="r">Samples</th></tr></thead><tbody>'+
-    ps.slice().reverse().map(q=>'<tr><td class="num"><b>'+esc(periodLabel(q.f,q.t))+'</b>'+(q.t>LAST_DAY&&q.f<=LAST_DAY?' <span class="tag">data to '+esc(fmtShort(LAST_DAY).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+cells(q.o)+'</tr>').join("")+
+  $("lvtable").innerHTML='<thead><tr><th>'+(MM?'Month':'Period')+'</th>'+BANDS.map(([k,n])=>'<th class="r">'+dot(C.band[k])+n+'</th>').join("")+'<th class="r">Swimmable</th><th class="r">Samples</th></tr></thead><tbody>'+
+    (MM?ps:ps.slice().reverse()).map(q=>'<tr><td class="num"><b>'+esc(labelOf(q))+'</b>'+(q.t>LAST_DAY&&q.f<=LAST_DAY?' <span class="tag">data to '+esc(fmtShort(LAST_DAY).replace(/ \d{4}$/,""))+'</span>':'')+'</td>'+cells(q.o)+'</tr>').join("")+
     meanRow()+'</tbody>';
 }
 /* ---------- map pies (Levels tab) ---------- */
@@ -952,9 +987,15 @@ function pieSVG(o,size,hole,ringColor){
   if(ringColor) parts.push('<circle cx="'+c+'" cy="'+c+'" r="'+(r-1.5)+'" fill="none" stroke="'+ringColor+'" stroke-width="3"/>');
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true">'+parts.join("")+'</svg>';
 }
+// The map pies cover the date range, or in Month of year the chosen years and season months.
+function pieWindow(){
+  if(S.lvMode==="month"){ const y0=moFirstYear(), months=new Set(SEASON_LIST[S.moSeason]);
+    return {test:s=>s.y>=y0 && months.has(s.mi%12), label:(S.moSeason==="year"?"":SEASON_NAME[S.moSeason]+", ")+moYearsText()}; }
+  return {test:s=>s.d>=S.dFrom && s.d<=S.dTo, label:periodLabel(S.dFrom,S.dTo)};
+}
 function sitePieCounts(){
-  const p=S.param, pi=PIDX[p], per=SITES.map(()=>blankBands());
-  SAMPLES.forEach(s=>{ if(s[pi]===undefined || s.d<S.dFrom || s.d>S.dTo) return; addSample(per[s.s],s,p); });
+  const p=S.param, pi=PIDX[p], per=SITES.map(()=>blankBands()), w=pieWindow();
+  SAMPLES.forEach(s=>{ if(s[pi]===undefined || !w.test(s)) return; addSample(per[s.s],s,p); });
   return per;
 }
 function drawPies(){
@@ -971,7 +1012,7 @@ function drawPies(){
     mk.on("click",()=>{
       mk.closeTooltip();
       const box=document.createElement("div"); box.className="pop";
-      box.innerHTML='<h4>'+esc(s.name)+'</h4><p class="pop-sub">'+esc(periodLabel(S.dFrom,S.dTo))+'</p>'+
+      box.innerHTML='<h4>'+esc(s.name)+'</h4><p class="pop-sub">'+esc(pieWindow().label)+'</p>'+
         '<div class="pop-pie">'+pieSVG(o,150,.6,null)+'<div class="pop-mid"><b>'+(o.n?sw+'%':'–')+'</b><span>swimmable</span></div></div>'+
         (o.n?'<table class="pop-t">'+BANDS.map(([k,n])=>'<tr><td><i style="background:'+C.band[k]+'"></i>'+n+'</td><td class="r"><b>'+Math.round(100*o[k]/o.n)+'%</b></td><td class="r">'+o[k]+'</td></tr>').join("")+'<tr class="tot"><td>Samples</td><td></td><td class="r">'+o.n+'</td></tr></table>':'<p>No samples of '+esc(META[p].l)+' in these dates.</p>');
       const btn=document.createElement("button"); btn.type="button"; btn.className="btn"+(sel?" ghost":""); btn.textContent=sel?"Remove from chart":"Show in chart";
